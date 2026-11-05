@@ -261,7 +261,8 @@ test("class deletion supports cancel, error recovery and persists after reload",
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Delete", exact: true }),
-  ).toBeHidden();
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Class A", exact: true }),
   ).toBeVisible();
@@ -308,7 +309,8 @@ test("homework deletion removes only its revision and deleted scores remain brow
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Delete", exact: true }),
-  ).toBeHidden();
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
   state.fail(false);
   await remove.click();
   await page

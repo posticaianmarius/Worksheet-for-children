@@ -134,7 +134,9 @@ async function setup(page, { failUpload = false } = {}) {
     },
   );
   await page.goto("/teacher/20");
-  await expect(page.locator(".worksheetCanvas .math-minigame")).toBeVisible();
+  await expect(
+    page.getByLabel("Worksheet name", { exact: true }),
+  ).toBeVisible();
   return state;
 }
 
@@ -148,6 +150,7 @@ async function save(page) {
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
 }
 async function choose(page, name) {
   await sidebar(page).getByRole("button", { name, exact: true }).click();
@@ -222,7 +225,7 @@ test("one selected activity, duplicate, drag, remove, undo, and save with stable
       .last()
       .getByRole("button", { name: "Number sequence", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("status")).toContainText("position");
+  await expect(page.locator(".editor-announcement")).toContainText("position");
   await sidebar(page).getByRole("button", { name: "Remove activity" }).click();
   await expect(sidebar(page).locator("li")).toHaveCount(4);
   await page.getByRole("button", { name: "Undo removal" }).click();
@@ -261,6 +264,7 @@ test("cancelling a drag preserves activity order, selection and saved data", asy
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   await page.keyboard.press("Escape");
   await page.mouse.up();
   await expect(page.locator(".activityDragPreview")).toHaveCount(0);
@@ -277,6 +281,7 @@ test("cancelling a drag preserves activity order, selection and saved data", asy
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
 });
 
 test("moving immediately after pressing reorders without selecting another activity", async ({
@@ -384,7 +389,9 @@ test("stationary presses and small movements select; deliberate dragging can be 
     await expect(page.locator(".activityDragPreview")).toHaveCount(0);
     await page.mouse.up();
     await expect(easy).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator(".worksheetCanvas .math-minigame")).toBeVisible();
+    await expect(
+      page.getByLabel("Worksheet name", { exact: true }),
+    ).toBeVisible();
   }
 
   const sequenceBox = await sequence.boundingBox();
@@ -407,6 +414,7 @@ test("stationary presses and small movements select; deliberate dragging can be 
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   await sequence.focus();
   await sequence.press("Enter");
   await expect(sequence).toHaveAttribute("aria-pressed", "true");
@@ -507,12 +515,12 @@ test("touch hold reorders without selecting and a quick swipe scrolls the drawer
   await expect(
     drawer.getByRole("button", { name: "Easy math", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  const scroller = drawer.locator(".ant-drawer-body");
+  const scroller = drawer;
   const before = await scroller.evaluate((element) => element.scrollTop);
   const card = drawer.locator("li").nth(1).locator(".activityThumbnail");
   const box = await card.boundingBox();
-  await touch("touchStart", box.x + box.width / 2, box.y + 70);
-  await touch("touchMove", box.x + box.width / 2, box.y + 15);
+  await touch("touchStart", box.x + box.width / 2, box.y + 35);
+  await touch("touchMove", box.x + box.width / 2, box.y - 20);
   await touch("touchEnd");
   await expect
     .poll(() => scroller.evaluate((element) => element.scrollTop))
@@ -523,6 +531,7 @@ test("touch hold reorders without selecting and a quick swipe scrolls the drawer
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   expect(
     [...state.worksheet.items].sort((a, b) => a.orderIndex - b.orderIndex)[0]
       .id,
@@ -554,11 +563,7 @@ test("touch dragging near the drawer edge scrolls to later activities", async ({
     touchPoints: [{ x: start.x + start.width / 2, y: 385 }],
   });
   await expect
-    .poll(() =>
-      drawer
-        .locator(".ant-drawer-body")
-        .evaluate((element) => element.scrollTop),
-    )
+    .poll(() => drawer.evaluate((element) => element.scrollTop))
     .toBeGreaterThan(180);
   await session.send("Input.dispatchTouchEvent", {
     type: "touchEnd",
@@ -675,6 +680,7 @@ test("a failed upload retains the existing photo and settings", async ({
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
 });
 
 test("phone activity drawer supports switching without losing edited settings", async ({
@@ -695,6 +701,7 @@ test("phone activity drawer supports switching without losing edited settings", 
       .getByRole("button", { name: "Number sequence", exact: true })
       .click();
     await expect(drawer).toBeHidden();
+    await page.getByRole("button", { name: "Preview", exact: true }).click();
     await expect(
       page.locator(".worksheetCanvas .sequence-minigame"),
     ).toBeVisible();
@@ -708,6 +715,7 @@ test("phone activity drawer supports switching without losing edited settings", 
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   expect(
     state.worksheet.items.find((item) => item.id === 30).configuration
       .exerciseCount,

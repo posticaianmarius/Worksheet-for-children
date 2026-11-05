@@ -1,5 +1,11 @@
 # Worksheet for Children — implemented architecture
 
+The redesigned React client uses strict TypeScript, lazy routes, a shared design
+system, and separate game engines, editors and players. See
+[`my-react/FRONTEND.md`](my-react/FRONTEND.md) for frontend ownership, game-module
+contracts, draft recovery and verification. The backend contracts described below
+remain the source of truth for persistence and published history.
+
 The product uses one React client, one Spring Boot modular-monolith backend, and one PostgreSQL database. Backend code is under `backend`; Flyway owns the schema. This document describes the implemented backend model rather than the obsolete addition-demo prototype.
 
 ```text

@@ -194,7 +194,7 @@ test("teachers manage child codes, start tests and navigate real results", async
   await expect(page.getByText("EFGH6789", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Ana Maria", exact: true }).click();
   await page.getByRole("link", { name: "Odd or even", exact: true }).click();
-  await expect(page.getByText("Întrebarea 1", { exact: true })).toBeVisible();
+  await expect(page.getByText("Activitatea 1", { exact: true })).toBeVisible();
   await expect(page.getByText("1 / 1", { exact: true }).last()).toBeVisible();
   await page.getByRole("link", { name: "Elevi", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -203,7 +203,7 @@ test("teachers manage child codes, start tests and navigate real results", async
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Șterge", exact: true }).click();
-  await page.getByRole("button", { name: "OK", exact: true }).click();
+  await page.getByRole("button", { name: "Șterge", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "Ana Maria", exact: true }),
   ).toHaveCount(0);

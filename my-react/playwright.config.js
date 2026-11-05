@@ -3,6 +3,8 @@ import process from "node:process";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: process.env.E2E_LIVE_BACKEND ? [] : ["**/live-backend.spec.js"],
+  snapshotPathTemplate: "{testDir}/snapshots/{testFilePath}/{arg}{ext}",
   timeout: 45_000,
   use: {
     baseURL: process.env.E2E_BASE_URL || "http://localhost:5173",

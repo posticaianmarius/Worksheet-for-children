@@ -119,8 +119,8 @@ async function mockPlatform(
 }
 
 async function addMath(page) {
-  if (await page.locator(".worksheetGameFrame").count())
-    await page.locator(".worksheetGameFrame").first().hover();
+  if (await page.locator(".game-stage").count())
+    await page.locator(".game-stage").first().hover();
   await page
     .getByRole("button", { name: "Add activity", exact: true })
     .first()
@@ -161,7 +161,7 @@ test("preview switching preserves unsaved worksheet settings on desktop and phon
   const state = await mockPlatform(page);
   await page.goto("/teacher/20");
   const name = page.getByLabel("Worksheet name", { exact: true });
-  const game = page.locator(".math-minigame");
+  const game = page.locator(".editor-settings");
   await name.fill("Unsaved preview draft");
   await game.getByRole("spinbutton").first().fill("7");
   await game.getByRole("spinbutton").first().blur();
@@ -177,11 +177,17 @@ test("preview switching preserves unsaved worksheet settings on desktop and phon
   }
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
+    if (width < 1024)
+      await page.getByRole("button", { name: "Settings", exact: true }).click();
     await expect(game.getByRole("spinbutton").first()).toHaveValue("7");
     await switchView("Preview as child");
     await expect(name).toBeDisabled();
-    await expect(game.locator(".math-answers button")).toHaveCount(4);
-    await expect(game.getByRole("spinbutton")).toHaveCount(0);
+    await expect(
+      page.locator(".full-preview .math-answers button"),
+    ).toHaveCount(4);
+    await expect(
+      page.locator(".full-preview").getByRole("spinbutton"),
+    ).toHaveCount(0);
     await switchView("Back to editor");
     await expect(name).toBeEnabled();
     await expect(name).toHaveValue("Unsaved preview draft");
@@ -209,7 +215,7 @@ test("dashboard sharing opens the correct code without navigating to the editor"
     .click();
   await page.setViewportSize({ width: 390, height: 844 });
 
-  await page.getByRole("link", { name: "Practice 1 activity" }).click();
+  await page.getByRole("link", { name: "Practice" }).click();
   await expect(page).toHaveURL(/\/teacher\/20$/);
 });
 
@@ -219,7 +225,7 @@ test("teacher editor shares saved worksheets from its tools panel", async ({
   await mockPlatform(page);
   await page.goto("/teacher/20");
   const share = page
-    .locator(".worksheetToolbarExpanded")
+    .locator(".editor-toolbar")
     .getByRole("button", { name: "Share worksheet", exact: true });
   await share.click();
   await expect(
@@ -233,7 +239,11 @@ test("teacher editor shares saved worksheets from its tools panel", async ({
   await page
     .getByLabel("Worksheet name", { exact: true })
     .fill("Updated practice");
-  await expect(share).toBeDisabled();
+  await share.click();
+  await expect(
+    page.getByRole("heading", { name: "Save your changes first" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   await page
     .getByRole("button", { name: "Save worksheet", exact: true })
     .click();
@@ -285,12 +295,12 @@ test("removal stays in the draft, supports undo and can save an empty worksheet"
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeEnabled();
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(page.locator(".save-status")).toHaveText("Unsaved changes");
   expect(state.changes).toHaveLength(0);
   await page.getByRole("button", { name: "Undo removal" }).click();
   await expect(page.getByRole("heading", { name: "Easy math" })).toBeVisible();
   expect(state.changes).toHaveLength(0);
-  await page.locator(".worksheetGameFrame").hover();
+  await page.locator(".game-stage").hover();
   await page.getByRole("button", { name: "Remove activity" }).click();
   await page
     .getByRole("button", { name: "Save worksheet", exact: true })
@@ -298,6 +308,7 @@ test("removal stays in the draft, supports undo and can save an empty worksheet"
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   expect(state.worksheet.items).toEqual([]);
   expect(
     state.changes.filter((entry) => entry.method === "DELETE"),
@@ -313,8 +324,11 @@ test("leaving without saving preserves server activities", async ({ page }) => {
   await page.goto("/teacher/20");
   await page.getByRole("heading", { name: "Easy math" }).click();
   await page.getByRole("button", { name: "Remove activity" }).click();
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("menuitem", { name: "Account" }).click();
+
+  await page.getByRole("link", { name: "Account" }).click();
+  await page
+    .getByRole("button", { name: "Leave without saving", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/account$/);
   expect(state.worksheet.items).toHaveLength(1);
   expect(state.changes).toHaveLength(0);
@@ -343,6 +357,7 @@ test("retry after a partial save keeps IDs and selects the latest catalog versio
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   expect(state.changes.filter((entry) => entry.method === "POST")).toHaveLength(
     2,
   );
@@ -364,6 +379,7 @@ test("saving an existing activity keeps its original catalog version", async ({
   await expect(
     page.getByRole("button", { name: "Save worksheet", exact: true }),
   ).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   expect(state.worksheet.items[0].miniGameId).toBe(1);
 });
 
@@ -381,14 +397,14 @@ test("language switching translates game and navigation without losing unsaved e
     "Keep this draft",
   );
   await expect(
-    page.getByRole("heading", { name: "Matematică ușoară" }),
+    page.getByRole("heading", { name: "Matematică simplă" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Salvează fișa", exact: true }),
   ).toBeEnabled();
   await expect(
     page.getByText("Modificări nesalvate", { exact: true }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   await expect(page.locator("html")).toHaveAttribute("lang", "ro");
 });
 
@@ -420,7 +436,7 @@ test("share dialog explains saved versions and confirms before replacing a code"
     .getByRole("button", { name: "Publish latest and replace code" })
     .click();
   await page
-    .getByRole("tooltip")
+    .getByRole("dialog", { name: "Replace the worksheet code?", exact: true })
     .getByRole("button", { name: "Publish latest and replace code" })
     .click();
   await expect(
@@ -442,20 +458,23 @@ test("worksheet saving, sharing and preview work on desktop and phone", async ({
   });
   await expect(name).toBeVisible();
   await expect(save).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
 
   await name.fill("Updated worksheet");
   await expect(save).toBeEnabled();
   await expect(page.getByText("Unsaved changes", { exact: true })).toHaveCount(
-    0,
+    1,
   );
   await page.keyboard.press("Control+s");
   await expect(save).toBeDisabled();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     await name.fill(`Worksheet ${width}`);
     await expect(save).toBeEnabled();
     await save.click();
     await expect(save).toBeDisabled();
+    await expect(page.locator(".save-status")).toHaveText("Saved");
     await expect(name).toHaveValue(`Worksheet ${width}`);
   }
   await page.setViewportSize({ width: 390, height: 844 });
@@ -492,9 +511,12 @@ test("phone navigation supports opening, closing, Escape and links", async ({
 
   await page.getByRole("button", { name: "Open navigation" }).click();
   await expect(
-    page.getByRole("menuitem", { name: "Worksheets" }),
+    page.getByRole("link", { name: "Worksheets", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Close navigation" }).first().click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Open navigation" }),
   ).toBeVisible();
@@ -505,7 +527,10 @@ test("phone navigation supports opening, closing, Escape and links", async ({
   ).toBeFocused();
   await page.getByRole("button", { name: "Open navigation" }).click();
 
-  await page.getByRole("menuitem", { name: "Worksheets" }).click();
+  await page
+    .locator("nav")
+    .getByRole("link", { name: "Worksheets", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/sheets$/);
   await expect(
     page.getByRole("button", { name: "Open navigation" }),
@@ -532,9 +557,12 @@ test("desktop navigation opens, closes, persists its state and follows links", a
   await expect(open).toHaveAttribute("aria-expanded", "false");
   await open.click();
   await expect(close).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("menuitem", { name: "Worksheets" }).click();
+  await page
+    .locator("nav")
+    .getByRole("link", { name: "Worksheets", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/sheets$/);
   await expect(close).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("menuitem", { name: "Account" }).click();
+  await page.getByRole("link", { name: "Account" }).click();
   await expect(page).toHaveURL(/\/account$/);
 });

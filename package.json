@@ -1,6 +1,12 @@
 {
-  "dependencies": {
-    "@ant-design/icons": "^6.3.4",
-    "react-router-dom": "^7.18.4"
+  "name": "practica",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix my-react run dev",
+    "build": "npm --prefix my-react run build",
+    "test": "npm --prefix my-react test",
+    "lint": "npm --prefix my-react run lint",
+    "typecheck": "npm --prefix my-react run typecheck",
+    "test:e2e": "npm --prefix my-react run test:e2e"
   }
 }

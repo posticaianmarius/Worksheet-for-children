@@ -162,7 +162,7 @@ for (const type of [
       await page.setViewportSize({ width: 1280, height: 900 });
 
     let correct = await correctAnswer(game, type);
-    const answers = game.locator('[class$="-answers"] button');
+    const answers = game.locator(".answer-grid button");
     const labels = (await answers.allTextContents()).map((value) =>
       value.trim().replace(/^[<>]\s*/, ""),
     );
@@ -199,9 +199,7 @@ for (const type of [
     expect(requests).toHaveLength(0);
     await page.clock.runFor(1);
     await expect(game.locator("[data-answer-state]")).toHaveCount(0);
-    await expect(game.locator('[class$="-exercise-number"]')).toContainText(
-      "2 / 2",
-    );
+    await expect(game.locator(".game-step")).toContainText("2 / 2");
     if (type === "higher-lower-game")
       await expect(
         game.locator(".higher-lower-question strong span").nth(1),

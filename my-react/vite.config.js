@@ -5,10 +5,7 @@ import process from "node:process";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
+  plugins: [react(), tailwindcss()],
 
   resolve: {
     alias: {
@@ -30,6 +27,7 @@ export default defineConfig({
   },
 
   build: {
+    manifest: true,
     outDir: "../backend/src/main/resources/static",
     emptyOutDir: true,
   },

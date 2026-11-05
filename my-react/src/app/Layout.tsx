@@ -1,0 +1,378 @@
+import "./layout.css";
+import { useEffect, useState } from "react";
+import {
+  BookOpen,
+  House,
+  Users,
+  ClipboardList,
+  Settings,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ArrowUpRight,
+  Volume2,
+  VolumeX,
+  Menu as MenuIcon,
+} from "lucide-react";
+import {
+  Link,
+  Navigate,
+  NavLink,
+  Outlet,
+  ScrollRestoration,
+  useLocation,
+} from "react-router-dom";
+import { canTeach } from "../shared/api";
+import {
+  Button,
+  Dropdown,
+  ErrorNotice,
+  Loading,
+  MenuAction,
+  Modal,
+} from "../shared/ui";
+import {
+  readStorage,
+  useLanguage,
+  usePreferences,
+  useSession,
+  writeStorage,
+} from "./state";
+import type { ReactNode } from "react";
+export function LanguageMenu() {
+  const { language, setLanguage, t } = useLanguage();
+  return (
+    <Dropdown ariaLabel={t("Language")} label={language === "ro" ? "RO" : "EN"}>
+      <MenuAction onClick={() => setLanguage("en")}>English</MenuAction>
+      <MenuAction onClick={() => setLanguage("ro")}>Română</MenuAction>
+    </Dropdown>
+  );
+}
+export function Brand() {
+  return (
+    <span className="brand">
+      <span className="brand-mark">
+        <BookOpen size={22} />
+      </span>
+      <span className="brand-name">
+        PlaySheets<span className="brand-dot">.</span>
+      </span>
+    </span>
+  );
+}
+export function PublicHeader({ minimal = false }: { minimal?: boolean }) {
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState<unknown>(null);
+  const { user, logout } = useSession(),
+    { t } = useLanguage();
+  async function leave() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await logout();
+    } catch (error) {
+      setError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <header className="public-header">
+        <Link to="/" aria-label={t("Play")}>
+          <Brand />
+        </Link>
+        <div className="actions">
+          <LanguageMenu />
+          {!minimal &&
+            (user ? (
+              <>
+                {canTeach(user) && (
+                  <Link
+                    className="button public-workspace-link"
+                    aria-label={t("My classes")}
+                    to="/home"
+                  >
+                    <House size={16} />
+                    <span>{t("My classes")}</span>
+                  </Link>
+                )}
+                <Button busy={busy} onClick={() => void leave()}>
+                  {t(user.role === "USER" ? "Another child" : "Log out")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link className="text-link" to="/login">
+                  {t("Teacher login")}
+                  <ArrowUpRight size={14} />
+                </Link>
+                <Link
+                  className="button button--primary teacher-signup"
+                  to="/signup"
+                >
+                  {t("Teacher account")}
+                </Link>
+              </>
+            ))}
+        </div>
+      </header>
+      <ErrorNotice error={error} />
+    </>
+  );
+}
+export function PublicLayout() {
+  const { pathname } = useLocation(),
+    { t } = useLanguage();
+  useEffect(() => {
+    document.title =
+      t(
+        pathname === "/login"
+          ? "Log in"
+          : pathname === "/signup"
+            ? "Account for teachers"
+            : "Learning through play",
+      ) + " · PlaySheets";
+  }, [pathname, t]);
+  return (
+    <>
+      <PublicHeader minimal />
+      <Outlet />
+    </>
+  );
+}
+export function RequireSession({
+  children,
+  teacher = false,
+  entry = "/login",
+}: {
+  children: ReactNode;
+  teacher?: boolean;
+  entry?: string;
+}) {
+  const { user, loading, error, refresh } = useSession(),
+    location = useLocation();
+  if (loading) return <Loading />;
+  if (error) return <ErrorNotice error={error} retry={() => void refresh()} />;
+  if (!user)
+    return <Navigate to={entry} state={{ from: location.pathname }} replace />;
+  if (teacher && !canTeach(user)) return <Navigate to="/" replace />;
+  return children;
+}
+export function Workspace() {
+  const { user } = useSession(),
+    { t } = useLanguage(),
+    { pathname } = useLocation();
+  const [collapsed, setCollapsed] = useState(
+      () => readStorage("practica.sidebar.collapsed", "false") === "true",
+    ),
+    [drawer, setDrawer] = useState(false);
+  const teacher = canTeach(user),
+    editor = pathname.startsWith("/teacher/");
+  const links = [
+    { to: "/home", label: "Home", Icon: House },
+    ...(teacher
+      ? [{ to: "/sheets", label: "Worksheets", Icon: BookOpen }]
+      : []),
+    { to: "/classes", label: "Classes", Icon: Users },
+    { to: "/assignments", label: "Assignments", Icon: ClipboardList },
+  ];
+  const active =
+    links.find((link) => pathname.startsWith(link.to))?.label ??
+    (editor ? "Worksheets" : "Account");
+  const nav = (
+    <>
+      <div className="nav-links">
+        {links.map(({ to, label, Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            title={t(label)}
+            onClick={() => setDrawer(false)}
+            className={({ isActive }) =>
+              "nav-link" +
+              (isActive || (editor && to === "/sheets") ? " active" : "")
+            }
+          >
+            <Icon size={20} />
+            <span>{t(label)}</span>
+          </NavLink>
+        ))}
+      </div>
+      <div className="sidebar-bottom">
+        <NavLink
+          to="/account"
+          className="nav-link"
+          onClick={() => setDrawer(false)}
+        >
+          <Settings size={20} />
+          <span>{t("Account")}</span>
+        </NavLink>
+        <div className="sidebar-person">
+          <span className="avatar">{user?.name.charAt(0)}</span>
+          <span>
+            <strong>{user?.name}</strong>
+            <small>{t(teacher ? "Teacher" : "Student")}</small>
+          </span>
+        </div>
+      </div>
+    </>
+  );
+  useEffect(() => {
+    document.title = t(active) + " · PlaySheets";
+  }, [active, t]);
+  return (
+    <div
+      className={
+        "workspace" +
+        (collapsed ? " workspace--collapsed" : "") +
+        (editor ? " workspace--editor" : "") +
+        (!teacher ? " workspace--learner" : "")
+      }
+    >
+      <aside className="sidebar">
+        <Link to="/home" className="sidebar-brand">
+          <Brand />
+        </Link>
+        <p className="nav-label">{t(teacher ? "Home" : "Continue learning")}</p>
+        <nav id="desktop-navigation" aria-label={t("Home")}>
+          {nav}
+        </nav>
+      </aside>
+      <div className="workspace-main">
+        <header className="workspace-header">
+          <div className="actions">
+            <Button
+              className="desktop-nav-toggle"
+              variant="ghost"
+              aria-expanded={!collapsed}
+              aria-controls="desktop-navigation"
+              aria-label={t(collapsed ? "Open navigation" : "Close navigation")}
+              onClick={() => {
+                setCollapsed((value) => {
+                  writeStorage("practica.sidebar.collapsed", String(!value));
+                  return !value;
+                });
+              }}
+            >
+              {collapsed ? (
+                <PanelLeftOpen size={20} />
+              ) : (
+                <PanelLeftClose size={20} />
+              )}
+            </Button>
+            <Button
+              className="mobile-nav-toggle"
+              variant="ghost"
+              aria-expanded={drawer}
+              aria-label={t("Open navigation")}
+              onClick={() => setDrawer(true)}
+            >
+              <MenuIcon size={20} />
+            </Button>
+            <span className="header-location">{t(active)}</span>
+          </div>
+          <LanguageMenu />
+        </header>
+        <Outlet />
+      </div>
+      <Modal
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        title={t("Home")}
+        className="navigation-drawer"
+      >
+        <nav aria-label={t("Home")}>{nav}</nav>
+      </Modal>
+    </div>
+  );
+}
+export function TeacherLayout() {
+  return (
+    <RequireSession teacher>
+      <Workspace />
+    </RequireSession>
+  );
+}
+export function SessionLayout() {
+  return (
+    <RequireSession>
+      <Workspace />
+    </RequireSession>
+  );
+}
+export function AttemptLayout() {
+  const { user } = useSession();
+  return (
+    <RequireSession entry="/">
+      {canTeach(user) ? (
+        <Workspace />
+      ) : (
+        <>
+          <PublicHeader />
+          <div className="learner-main">
+            <Outlet />
+          </div>
+        </>
+      )}
+    </RequireSession>
+  );
+}
+export function SoundButton() {
+  const { preferences, setPreference } = usePreferences(),
+    { t } = useLanguage();
+  return (
+    <Button
+      variant="ghost"
+      aria-label={t("preferences.sound")}
+      aria-pressed={preferences.sound}
+      onClick={() => setPreference("sound", !preferences.sound)}
+    >
+      {preferences.sound ? <Volume2 size={20} /> : <VolumeX size={20} />}
+    </Button>
+  );
+}
+export function NotFound() {
+  const { t } = useLanguage();
+  return (
+    <main className="empty-page">
+      <BookOpen size={42} />
+      <h1>{t("common.notFound")}</h1>
+      <p>{t("common.notFoundCopy")}</p>
+      <Link className="button button--primary" to="/home">
+        {t("common.backHome")}
+      </Link>
+    </main>
+  );
+}
+export function RouteError() {
+  const { t } = useLanguage();
+  return (
+    <main className="empty-page">
+      <h1>{t("Something went wrong.")}</h1>
+      <p>{t("Your changes are still on this device.")}</p>
+      <Button onClick={() => window.location.reload()}>{t("Try again")}</Button>
+    </main>
+  );
+}
+export function RootLayout() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const main = document.querySelector("main");
+    if (main) {
+      main.setAttribute("tabindex", "-1");
+      main.focus({ preventScroll: true });
+    }
+  }, [pathname]);
+  return (
+    <>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <div id="main-content">
+        <Outlet />
+      </div>
+      <ScrollRestoration />
+    </>
+  );
+}

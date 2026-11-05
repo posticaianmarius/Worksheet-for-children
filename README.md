@@ -1,4 +1,4 @@
-# Worksheet for kids
+# PlaySheets
 
 A React frontend and Spring Boot backend for worksheets, mini-games, classrooms,
 assignments, and saved attempts. The backend requires PostgreSQL and applies Flyway

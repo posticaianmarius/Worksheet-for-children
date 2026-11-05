@@ -1,0 +1,668 @@
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 25px;
+}
+
+.filter-bar select {
+  width: 200px;
+  font-size: 13px;
+}
+
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 440px;
+}
+
+.search-field svg {
+  position: absolute;
+  left: 13px;
+  color: var(--color-muted);
+}
+
+.search-field input {
+  padding-left: 40px !important;
+}
+
+.worksheet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  gap: 22px;
+}
+
+.worksheet-card {
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: white;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.worksheet-card:hover {
+  border-color: #bfb6e5;
+  box-shadow: 0 6px 20px #4b3ab70a;
+}
+
+.worksheet-cover {
+  height: 125px;
+  background: #efecfa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+  position: relative;
+}
+
+.worksheet-cover span {
+  position: absolute;
+  right: 16px;
+  top: 15px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: #ffffffa0;
+}
+
+.worksheet-card:nth-child(3n + 2) .worksheet-cover {
+  background: #eef4ef;
+  color: #4b7962;
+}
+
+.worksheet-card:nth-child(3n + 3) .worksheet-cover {
+  background: #faf1df;
+  color: #97763b;
+}
+
+.worksheet-card-body {
+  padding: 20px;
+}
+
+.worksheet-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-ink);
+}
+
+.worksheet-title h2 {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.worksheet-card-body > p {
+  font-size: 12px;
+  margin-top: 7px;
+}
+
+.worksheet-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 18px -8px -8px;
+}
+
+.share-code {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+  padding: 24px 0 30px;
+}
+
+.share-code h2 {
+  font-size: 38px;
+  letter-spacing: 6px;
+  color: var(--color-primary);
+  overflow-wrap: anywhere;
+}
+
+.presentation-dialog {
+  width: min(1000px, 100%);
+  text-align: center;
+  padding: 40px;
+}
+
+.presentation-code {
+  font-size: clamp(28px, 9vw, 110px);
+  font-weight: 650;
+  letter-spacing: 8px;
+  padding: 45px 0;
+  overflow-wrap: anywhere;
+  color: var(--color-primary);
+}
+
+.editor-page {
+  padding: 0 24px 24px;
+  max-width: 1900px;
+  margin: 0 auto;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 24px;
+}
+
+.editor-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.editor-name input {
+  font-size: 15px;
+  font-weight: 600;
+  border-color: transparent !important;
+  background: transparent !important;
+  max-width: 340px;
+  padding-left: 6px !important;
+}
+
+.editor-name > a {
+  color: var(--color-muted);
+}
+
+.save-status {
+  font-size: 10px;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.save-status.error {
+  color: var(--color-error);
+}
+
+.editor-actions {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.editor-actions .button {
+  font-size: 11px;
+  min-height: 38px;
+  padding: 9px 11px;
+}
+
+.editor-more {
+  display: none;
+}
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: start;
+}
+
+.worksheetActivitySidebar {
+  position: sticky;
+  top: 90px;
+  max-height: calc(100dvh - 110px);
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: white;
+  padding: 16px;
+}
+
+.worksheetActivityList h2 {
+  font-size: 13px;
+}
+
+.count-badge {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-radius: 6px;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.worksheetActivityList ol {
+  padding: 0;
+  margin: 18px 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.worksheetActivityList li {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.worksheetActivityList li.activitySelected {
+  border-color: #c5bcee;
+  background: #f5f2ff;
+}
+
+.activityThumbnail {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-ink);
+  touch-action: none;
+}
+
+.activityThumbnail strong {
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.activityThumbnail small {
+  display: block;
+  font-size: 9px;
+  margin-top: 4px;
+  color: var(--color-muted);
+}
+
+.activityIndex {
+  font-size: 9px;
+  color: var(--color-muted);
+  min-width: 10px;
+}
+
+.activityThumbnail > span:nth-child(3) {
+  flex: 1;
+  min-width: 0;
+}
+
+.activityMiniature {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 17px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.activityListActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0;
+  margin-top: 10px;
+}
+
+.activityListActions .button {
+  min-height: 28px;
+  padding: 6px;
+  min-width: 28px;
+}
+
+.outline-add {
+  width: 100%;
+  font-size: 11px;
+  min-height: 38px;
+}
+
+.activityDragPreview {
+  z-index: 300;
+  background: white;
+  border: 2px solid var(--color-primary);
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 12px 25px #25304722;
+  font-size: 13px;
+  color: var(--color-primary);
+}
+
+.activityDragging {
+  opacity: 0.25;
+}
+
+.activityDropPlaceholder {
+  position: absolute;
+  bottom: -7px;
+  height: 3px;
+  background: var(--color-primary);
+  left: 0;
+  right: 0;
+  border-radius: 2px;
+}
+
+.editor-preview {
+  min-width: 0;
+}
+
+.editor-preview > .section-heading {
+  margin-bottom: 5px;
+}
+
+.editor-preview .eyebrow {
+  font-size: 9px;
+}
+
+.editor-preview > .section-heading > .muted {
+  font-size: 10px;
+}
+
+.preview-note {
+  font-size: 10px;
+  color: var(--color-muted);
+  margin-bottom: 18px;
+}
+
+.editor-settings {
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 20px;
+  max-height: calc(100dvh - 170px);
+  overflow-y: auto;
+}
+
+.editor-settings > h2 {
+  font-size: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 20px;
+}
+
+.editor-announcement {
+  font-size: 11px;
+  color: var(--color-success);
+  margin: -12px 0 16px;
+}
+
+.editor-mobile-toolbar {
+  display: none;
+}
+
+.full-preview {
+  max-width: 900px;
+  margin: 30px auto;
+}
+
+.full-preview > .game-step {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.catalog-dialog {
+  width: min(900px, 100%);
+}
+
+.catalog-dialog section > h3 {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin: 24px 0 14px;
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.catalog-card {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 20px;
+  background: white;
+  text-align: left;
+  color: var(--color-ink);
+}
+
+.catalog-card:hover {
+  border-color: #b9aee4;
+  background: #faf8ff;
+}
+
+.catalog-card > span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 21px;
+}
+
+.catalog-card strong {
+  font-size: 13px;
+}
+
+.catalog-card small {
+  color: var(--color-muted);
+  font-size: 10px;
+}
+
+@media (min-width: 1500px) {
+  .editor-layout {
+    grid-template-columns: 220px minmax(0, 1fr) 320px;
+  }
+  .editor-page {
+    padding: 0 32px 32px;
+  }
+}
+
+@media (max-width: 1279px) {
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  .worksheetActivitySidebar {
+    display: none;
+  }
+  .editor-mobile-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .editor-mobile-toolbar .segmented {
+    display: none;
+  }
+  .editor-desktop-action {
+    display: none;
+  }
+  .editor-more {
+    display: block;
+  }
+}
+
+@media (max-width: 1023px) {
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-preview,
+  .editor-settings {
+    max-height: none;
+  }
+  .editor-tab--settings .editor-preview {
+    display: none;
+  }
+  .editor-tab--preview .editor-settings {
+    display: none;
+  }
+  .editor-mobile-toolbar .segmented {
+    display: flex;
+  }
+  .editor-settings {
+    padding: 24px;
+  }
+  .editor-settings .settings-form {
+    max-width: 600px;
+    margin: auto;
+  }
+  .segmented {
+    padding: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: white;
+    gap: 3px;
+  }
+  .segmented .button {
+    padding: 7px 12px;
+    min-height: 32px;
+    border: 0;
+    font-size: 11px;
+  }
+  .segmented .button[aria-pressed="true"] {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+  }
+  .editor-name {
+    flex-wrap: wrap;
+    column-gap: 10px;
+    row-gap: 2px;
+  }
+  .editor-name input {
+    width: calc(100% - 36px);
+    flex: 1;
+  }
+  .save-status {
+    margin-left: 30px;
+    font-size: 9px;
+  }
+  .editor-toolbar {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 767px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .filter-bar select,
+  .search-field {
+    width: 100%;
+    max-width: none;
+  }
+  .activity-drawer {
+    width: min(420px, 100%);
+  }
+  .activity-drawer .worksheetActivityList li {
+    padding: 10px;
+  }
+  .activity-drawer .activityThumbnail strong {
+    font-size: 13px;
+  }
+  .activity-drawer .activityMiniature {
+    width: 44px;
+    height: 48px;
+  }
+  .activity-drawer .activityListActions .button {
+    min-height: 36px;
+    min-width: 36px;
+  }
+  .activity-drawer .worksheetActivityList ol {
+    gap: 14px;
+  }
+  .activity-drawer .outline-add {
+    min-height: 44px;
+  }
+  .editor-page {
+    padding: 0 16px 24px;
+  }
+  .editor-toolbar {
+    margin-bottom: 20px;
+    padding: 16px 0;
+    gap: 10px;
+    align-items: center;
+  }
+  .editor-name {
+    min-width: 0;
+  }
+  .editor-name input {
+    font-size: 12px;
+    min-height: 32px;
+    padding: 4px !important;
+    max-width: none;
+  }
+  .editor-name > a {
+    display: none;
+  }
+  .save-status {
+    margin-left: 4px;
+  }
+  .editor-actions .button {
+    min-height: 36px;
+    font-size: 10px;
+    padding: 8px;
+  }
+  .editor-actions > .button--ghost {
+    display: none;
+  }
+  .editor-actions > .button--primary svg {
+    display: none;
+  }
+  .editor-actions > .button--primary {
+    max-width: 110px;
+  }
+  .editor-actions {
+    gap: 5px;
+  }
+  .editor-mobile-toolbar {
+    align-items: center;
+  }
+  .editor-mobile-toolbar > .button {
+    font-size: 11px;
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+  .segmented .button {
+    font-size: 10px;
+    padding: 7px 9px;
+  }
+  .editor-settings {
+    padding: 20px;
+  }
+  .editor-announcement {
+    margin-top: -8px;
+  }
+  .catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .catalog-card {
+    padding: 16px;
+    gap: 10px;
+  }
+  .catalog-card strong {
+    font-size: 12px;
+  }
+  .catalog-card small {
+    font-size: 10px;
+  }
+  .share-code h2 {
+    font-size: 30px;
+    letter-spacing: 4px;
+  }
+}

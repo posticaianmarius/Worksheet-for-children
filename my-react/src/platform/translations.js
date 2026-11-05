@@ -68,7 +68,7 @@ const romanian = {
   "Bring numbers, letters and new ideas to life with playful activities.":
     "Dă viață numerelor, literelor și ideilor noi prin activități jucăușe.",
   "Already have an account?": "Ai deja un cont?",
-  "New to Practica?": "Ești nou pe Practica?",
+  "New to PlaySheets?": "Ești nou pe PlaySheets?",
   "Your worksheets, classes and learning adventures are waiting.":
     "Fișele, clasele și aventurile tale de învățare te așteaptă.",
   "Create playful activities and follow your class's progress.":

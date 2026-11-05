@@ -40,8 +40,14 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Check frontend types and lint
+        run: npm run typecheck && npm run lint
+
       - name: Build production frontend
         run: npm run build
+
+      - name: Check public JavaScript budget
+        run: npm run check:bundle
 
   backend:
     name: Backend and PostgreSQL tests

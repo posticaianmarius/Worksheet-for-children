@@ -1,42 +1,43 @@
-# Worksheet for children frontend
+# PlaySheets frontend
+
+A responsive teacher workspace and child learning experience built with React,
+Vite and strict TypeScript. All six game types use shared engines and a common
+player host. Romanian and English are supported throughout.
 
 ## Development
 
+Use Node.js 24. Start the Spring Boot API on port 8080, then:
+
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-The Spring Boot API is expected on `http://localhost:8080` during development.
+Vite serves the application at http://localhost:5173 and proxies /api to the backend.
+The root repository also provides forwarding commands such as `npm run dev`.
 
-## Verification
+## Checks
 
 ```bash
 npm test
 npm run lint
+npm run typecheck
 npm run build
+npm run check:bundle
 npm run test:e2e
 ```
 
-Install the Playwright browser once with `npx playwright install chromium`. The end-to-end suite starts Vite automatically and uses mocked API responses, so it does not require a backend or change your database. Set `E2E_BASE_URL` to test against an already running frontend. Any manual checks that create accounts, classes, assignments, or attempts against real services should use an isolated test database.
+The production build writes to the backend's static resources. The bundle check
+enforces a 180 KiB gzip public-entry JavaScript budget.
 
-## React + Vite
+Install the browser once with `npx playwright install chromium`. The ordinary
+browser suite mocks API responses and does not modify a database. It includes
+visual snapshots, responsive checks, scoring, authoring and recovery regressions.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+To test against an existing frontend, set `E2E_BASE_URL`. For a full browser/backend
+contract check, point the backend at a **disposable PostgreSQL database** and run
+`npm run test:live`. That test creates real accounts, uploads, worksheets, a class,
+assignments and saved results; do not use a shared or production database.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-
-## 
-To make it run add confeti: npm install canvas-confetti
-
+See [FRONTEND.md](FRONTEND.md) for module boundaries, game contracts, saving,
+recovery, visual conventions and test maintenance.
