@@ -4,6 +4,8 @@ A React frontend and Spring Boot backend for worksheets, mini-games, classrooms,
 assignments, and saved attempts. The backend requires PostgreSQL and applies Flyway
 migrations at startup.
 
+For the saved setup in this checkout, start with the [session handoff](docs/teaching-spaces-handoff.md). It records the existing database, restart commands, completed checks and release boundaries. The Compose workflow below is the portable setup; its host database port differs from the existing local container.
+
 ## Run all three services with Docker (recommended for development)
 
 Install Docker Desktop and start it in **Linux containers** mode. Colleagues on
@@ -24,7 +26,7 @@ allow a few minutes. Open **http://localhost:5173** once all three services are 
 | --- | --- | --- |
 | Frontend | http://localhost:5173 | React/Vite with live updates |
 | Backend | http://localhost:8080 | Spring Boot API |
-| PostgreSQL | localhost:5432 | Database `worksheets`, user/password `postgres` |
+| PostgreSQL | localhost:5433 | Database `worksheets`, user/password `postgres` |
 
 The frontend forwards `/api` requests to the backend inside Docker. Keep using
 `localhost:5173` in the browser; the internal Docker service names are not browser URLs.
@@ -53,8 +55,9 @@ Do not delete these folders to troubleshoot startup. Back up an existing databas
 before applying new migrations. Frontend dependencies are isolated from host
 `node_modules`, so Windows, macOS, and Linux colleagues can use the same setup.
 
-If a port is already occupied, stop the existing local Vite, Java, or PostgreSQL
-process before starting the Docker services. If a service fails, inspect its logs.
+If a port is already occupied, identify the owning process and use or stop the
+matching PlaySheets service before starting another copy. Leave unrelated services
+alone. If a service fails, inspect its logs.
 The backend waits for PostgreSQL readiness, and the frontend waits for backend
 readiness. Migration errors still need the investigation described below.
 
@@ -97,6 +100,7 @@ cd my-react
 npm ci
 npm run build
 cd ../backend
+$env:DB_URL = 'jdbc:postgresql://localhost:5433/worksheets'
 .\mvnw.cmd clean spring-boot:run
 ```
 
@@ -104,9 +108,12 @@ Open http://localhost:8080. Stop the backend with Ctrl+C.
 The frontend build writes to `backend/src/main/resources/static`, which Spring Boot serves.
 Rebuild the frontend and restart the backend after changing frontend code in this mode.
 
-PostgreSQL uses `localhost:5432`, database `worksheets`, username `postgres`, and
-password `postgres` by default. Its data persists in `database/postgres-data`.
-Use `DB_URL`, `DB_USERNAME`, and `DB_PASSWORD` to connect to a different database.
+Compose publishes PostgreSQL at `localhost:5433`, database `worksheets`, with local
+username/password `postgres`. The standalone backend defaults to port 5432, so the
+commands above explicitly select the Compose port. The existing container in this
+checkout instead publishes port 55440; use the handoff instructions to resume it.
+Data persists in `database/postgres-data`. Use `DB_URL`, `DB_USERNAME`, and
+`DB_PASSWORD` for the actual database you intend to open.
 
 ## Develop with automatic frontend updates
 
@@ -115,6 +122,7 @@ From the repository root, start PostgreSQL and the backend:
 ```powershell
 docker compose up -d postgres
 cd backend
+$env:DB_URL = 'jdbc:postgresql://localhost:5433/worksheets'
 .\mvnw.cmd clean spring-boot:run
 ```
 
@@ -130,25 +138,39 @@ Open http://localhost:5173. Vite forwards `/api` requests to the backend on port
 
 ## Teacher and student workspaces
 
-Teachers sign in, create a class, and add students by name. Each student receives a
-private personal code; no child email, password or signup is required. Existing
-class members can receive a code using **Generate code** without changing their
-identity or saved work. The teacher can print access cards or replace a lost code.
+Teachers sign in with email/password. A teacher working independently has a personal
+teaching space; owners can invite other teachers and assign lead/co-teachers to
+classes. Joining a team keeps existing personal classes separate. Ordinary teachers
+see their assigned classes; owners oversee the space. Worksheet drafts remain
+private to their authors.
 
-Teachers build reusable worksheets, then assign a frozen version to a whole class
-or selected students. Classes have **Students**, **Assignments** and **Progress**
-tabs. Global **Assignments** manages each delivery independently; **Results** shows
-progress and saved scores, including closed assignments.
+Search the shared **Students** directory before creating a child. Reuse the same
+profile in every class within that teaching space. Pasted name lists have a review
+step, and matching names require an explicit identity choice. Children do not need
+email, passwords or signup. Only owners and explicitly delegated teachers can print
+or replace their private login cards.
 
-Students enter their personal code on the home page and open **My work**. They can
-start or resume an assigned worksheet, review **Finished work**, and adjust their
-preferences. A worksheet code remains an optional shortcut into a particular task.
-**Another child** signs out before a shared device changes hands.
+Class pages have **Overview**, **Students**, **Assignments** and **Progress** tabs.
+Assign through **Choose worksheet → Recipients → Review → Assign**. The review
+pins an immutable revision; later edits cannot change the assigned work. Recipients
+are fixed, and each delivery has its own batch ID and optional title. Share its
+exact assignment link when directing students to a particular delivery.
 
-Replacing a code ends sessions using the old credential. Closing an assignment or
-removing a student stops access while retaining the teacher's completed history.
-Existing worksheet IDs, immutable revisions, student identities and saved results
-are preserved; this architecture change reuses the existing database columns.
+Students enter one private personal code or scan their QR card to open **My work**
+across all their classes in the space. They can resume work, filter by class, review
+**Finished work**, and use **Another child** on shared devices. The optional legacy
+worksheet-code shortcut shows a chooser when several eligible deliveries match.
+
+Removing a class membership affects only that class. Closing work or archiving a
+class stops unfinished attempts and preserves completed history. Codes belong to
+student profiles, so another class remains accessible. Rotating a student's code
+revokes its aliases and old code sessions; archiving the profile disables its space
+login. Archived classes are read-only in this release.
+
+Flyway V25 adds the teaching-space, directory, credential and delivery model.
+Existing identities, memberships, revisions, assignments and results retain their
+IDs. Valid old codes migrate as aliases; unrelated children are never merged by name.
+See the [architecture](ARCHITECTURE.md) for permission and migration rules.
 
 ## Build and verify the backend
 
@@ -156,10 +178,12 @@ With Docker Desktop running, from `backend`:
 
 ```powershell
 .\mvnw.cmd clean verify
+$env:DB_URL = 'jdbc:postgresql://localhost:5433/worksheets'
 java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
-The JAR requires a running PostgreSQL database. To include frontend changes, run
+The URL above selects the Compose database; use port 55440 for this checkout's
+saved local container. The JAR requires a running PostgreSQL database. To include frontend changes, run
 `npm run build` in `my-react` before building the JAR.
 
 Regular tests catch duplicate migration versions without Docker. Full verification
@@ -192,11 +216,12 @@ reconciliation; do not delete the database or its migration history to bypass th
 See [backend documentation](backend/README.md) for architecture, API configuration,
 and migration details, and [task image documentation](backend/TASK_IMAGES.md) for image APIs.
 
+## Documentation
 
-## Teaching spaces and classrooms
-
-PlaySheets supports individual teachers and shared teaching teams. Space owners invite teachers, assign class co-teachers, and delegate student login-card permissions. The Students directory reuses one profile across classes; children use one private code or QR login for all their classes in that space.
-
-Class pages have Overview, Students, Assignments and Progress tabs. Assign worksheets through recipient selection and a frozen-version review. Closing work or archiving a class preserves completed results. Worksheet drafts stay private to their author.
-
-Existing accounts, classes and history migrate through Flyway V25 without resetting data. Joining a team keeps existing personal classes separate. Back up a populated database before upgrading. See [ARCHITECTURE.md](ARCHITECTURE.md) for permissions, migration details, and current release boundaries.
+| Document | Purpose |
+| --- | --- |
+| [Session handoff](docs/teaching-spaces-handoff.md) | Final checkpoint, local restart, backups and next-session context |
+| [Architecture](ARCHITECTURE.md) | Product model, permissions, history and migration rules |
+| [Backend guide](backend/README.md) | APIs, database, security and backend verification |
+| [Frontend guide](my-react/FRONTEND.md) | Modules, caching, game contracts and UI verification |
+| [Task image guide](backend/TASK_IMAGES.md) | Image fields, uploads and asset lifecycle |

@@ -29,18 +29,23 @@ Each feature keeps the `controller -> service -> repository -> entity` flow. Con
 
 ```text
 auth_users (USER / TEACHER / ADMIN)
-  ├──< worksheet (editable, owned)
-  │      ├──< worksheet_item (editable)
-  │      └──< worksheet_revision (immutable publication)
-  │              └──< worksheet_revision_item (frozen game + configuration)
-  │                      └──< worksheet_attempt
-  │                              └──< worksheet_attempt_item_result
-  ├──< classroom (space-scoped, with lead and co-teachers)
-  │      └──< classroom_member >── USER
-  └── worksheet_assignment
-          ├── one assigned USER
-          ├── optional classroom
-          └── one immutable worksheet_revision
+  └──< worksheet (private editable draft)
+          ├──< worksheet_item (editable)
+          └──< worksheet_revision (immutable)
+                  └──< worksheet_revision_item (frozen game + configuration)
+
+teaching_space
+  ├──< space_teacher >── auth_users (owner/delegated permissions)
+  ├──< space_invitation (hashed single-use token)
+  ├──< space_student >── auth_users
+  │      └──< student_credential (primary code + migrated aliases)
+  ├──< classroom
+  │      ├──< class_teacher >── auth_users (lead/co-teachers)
+  │      └──< classroom_member >── space_student
+  └──< assignment_delivery (existing batch UUID, title, revision, closure)
+          └── worksheet_assignment (recipient, space, optional class, revision)
+                  └──< worksheet_attempt
+                          └──< worksheet_attempt_item_result
 
 mini_game_definition (type + version + JSON Schemas)
   ├──< worksheet_item
@@ -57,49 +62,79 @@ allow children to complete activities and save their results.
 
 Publishing occurs when an assignment is created, a personal attempt starts, or a worksheet is shared. A SHA-256 content hash reuses the latest unchanged revision. A changed name, item order, definition version, or configuration creates the next revision. Published rows are never edited.
 
-A worksheet share code points to one immutable revision. A signed-in `USER` redeems it once to receive a normal assignment, then uses the assignment attempt APIs. Reusing the same code returns the existing active assignment. `POST /api/worksheets/{id}/share/rotate` publishes the latest draft under a new code without changing earlier assignments.
+A worksheet share code points to an immutable revision. New assignment links
+identify an exact delivery and require an eligible signed-in recipient. Legacy
+worksheet-code redemption reuses eligible active work; multiple matches return a
+conflict so the client can request `POST /api/worksheets/join/choices` and show a
+chooser. Choices include title, frozen worksheet name, class and assignment time.
+Historic general codes can create direct work only in the author's personal space
+and cannot bypass fixed class recipients. Rotating a worksheet share code publishes
+the latest draft without changing existing deliveries.
 
-Teachers create children by name with `POST /api/classes/{id}/members` and rename them
-with `PATCH /api/classes/{id}/members/{userId}`. These profiles use internal `USER`
-identities to store progress, with no usable email/password login. V21 stores a unique
-personal code per membership. Existing accounts can receive a code using
-`POST /api/classes/{id}/members/{userId}/code`; their account names remain self-managed.
+## Students and classroom access
 
-`POST /api/classes/{id}/tests` accepts `worksheetId`, publishes the current draft,
-updates its shared revision, and assigns it to every active member atomically.
-Earlier assignments keep their frozen revisions. The public `POST /api/play/join`
-accepts `studentCode` and `worksheetCode`, validates both against an active membership
-and its teacher, and establishes a child session only after successful redemption.
-It returns the child and `assignmentId` for the normal attempt APIs. Assignments are
-matched within that membership's class. Child code entry never creates a new profile.
+Student directory profiles belong to a teaching space and reference existing
+authentication users. `space_student.id` is the directory `studentId`;
+`auth_users.id` remains the `userId` used in legacy member/history routes.
+Creating or reusing a membership does not replace the child identity or history.
 
-The teacher-only `GET /api/classes/{id}/members/{userId}/tests` returns saved attempts.
-Roster responses include last-test percentage, average percentage, and the lowest
-scoring test, calculated from completed attempts. Removing a member disables their
-personal code and revokes their class assignments without deleting history.
+All space teachers can search/create directory profiles. Class managers add a
+profile with `POST /api/classes/{id}/members` and `{ "studentId": 123 }`;
+the name-based request remains a compatibility path. Duplicate names require an
+explicit create-another-child choice. Bulk name/profile requests are reviewed by
+the client and committed transactionally. Only owners rename shared profiles or
+archive students.
 
-The old `worksheet_result` and `mini_game_result` tables/routes remain as deprecated compatibility APIs. New work uses `worksheet_attempt` and `worksheet_attempt_item_result`.
+V21 originally stored codes on memberships. V25 moves valid codes to
+`student_credential`, with one primary printable code and migrated aliases for
+each scoped profile. The old member-code column remains for migration compatibility
+but is cleared and is no longer authoritative. Routine directory/roster responses
+contain no credentials or per-student grade aggregates.
+
+`POST /api/play/login` authenticates an active student profile and opens all their
+classes in that space. It creates neither a profile nor an assignment. Code sessions
+are validated on authenticated API requests, including `/api/auth/me`; they cannot
+change space. Invalid public-code guesses are rate limited per remote address.
+Legacy email-based students can choose among their existing spaces.
+
+Only the owner or staff with explicit whole-space student-access permission can
+issue/reprint/rotate credentials. Dedicated credential responses are non-cacheable.
+QR codes carry the credential in a fragment that the client clears before login.
+Rotation invalidates all aliases and their code-authenticated sessions without
+changing identity or results. Membership removal and class archive do not revoke
+the profile's login to other classes. Profile archive disables the login and ends
+unfinished work across that space.
+
+Legacy class credential routes are permission-checked adapters to the scoped
+profile credential. `POST /api/classes/{id}/tests` remains a compatibility adapter;
+the current UI uses the reviewed assignment flow below. `POST /api/play/join`
+validates the supplied student code and worksheet selector before establishing its
+session. `GET /api/classes/{id}/members/{userId}` and its `/tests` child route
+support authorized former-student history as well as current members.
+
+The old `worksheet_result` and `mini_game_result` tables/routes remain compatibility
+APIs. New gameplay uses canonical attempts and immutable revision item IDs.
 
 ## Teacher and student workspaces
 
-`POST /api/play/login` accepts `{ "studentCode": "..." }` and establishes the normal
-child session after validating an active membership and classroom. It does not
-create a child or assignment. Personal codes are credentials: unsuccessful public
-code attempts are limited per remote address, and code sessions are checked against
-the active membership on authenticated API requests, including `/api/auth/me`.
-`POST /api/classes/{classId}/members/{userId}/code/rotate` replaces a code and
-invalidates sessions using the previous credential without changing the identity
-or its history. Printable access cards are a teacher-owned frontend view.
+`SpaceAccess` is the common space/class authorization boundary. Teachers send
+validated `X-Space-Id` context; resource IDs alone and source-worksheet ownership
+never grant class/result access. Owners oversee the space, ordinary teachers manage
+assigned classes, and leads/owners choose co-teachers. Private worksheet drafts
+stay author-owned even when a co-teacher or owner can read an assigned snapshot.
 
-Assignment creation additionally accepts `{ "classroomId": 1, "userIds": [2, 3] }`.
-All selected users must be distinct, active members of that exact owned class.
-The original whole-class and single-user payloads remain supported. Each creation
-retains its existing unique batch UUID. Reports expose that `batchId`; the new
-teacher workspace groups by delivery rather than combining repeated assignments
-of the same worksheet version. `DELETE /api/assignments/batches/{batchId}` closes
-only that teacher-owned delivery. Legacy revision-group endpoints are unchanged.
-Student assignment responses now include `IN_PROGRESS` when an unfinished attempt
-exists. Completed versions and results remain immutable.
+Assignment preview publishes the version shown during review. Creation accepts
+`revisionId`, optional `title`, and either a whole `classroomId` or that class
+plus distinct selected `userIds`. The legacy single-user payload remains available.
+Recipients must be active in that exact class and space. Creation persists the
+delivery and recipient grants together; recipient lists are fixed afterward.
+
+The existing batch UUID identifies each delivery independently. Class co-teachers
+and owners can inspect progress or close it through the class policy. Creating a
+new delivery still requires ownership of the source worksheet. Closing one batch
+does not close another delivery of the same revision. Student responses distinguish
+not-started/in-progress/completed work; completed history remains readable after
+closure, while unfinished revoked attempts cannot be resumed.
 
 ## Attempt lifecycle
 
@@ -120,7 +155,7 @@ POST worksheet/assignment attempts
                - status becomes COMPLETED and immutable
 
 membership removal -> active assignment revoked -> unfinished attempts ABANDONED
-                                      completed history remains readable by teacher
+                                      completed history remains readable under the student/class policy
 ```
 
 The client reports each dynamic game's item score because the backend cannot reproduce arbitrary frontend game logic. The backend controls revision membership, schemas, non-negative numeric bounds, `score <= maxScore`, completeness, lifecycle state, and aggregate totals.
@@ -131,10 +166,10 @@ The client reports each dynamic game's item score because the backend cannot rep
 | --- | --- | --- | --- |
 | Sign in | Personal code or existing credentials | Email/password | Email/password |
 | Create and edit worksheets | No | Yes | Yes |
-| Create/join classroom | Join | Create/manage | No special classroom bypass |
-| Assign an owned worksheet | No | Yes | No implicit teacher bypass |
+| Create/join classroom | Legacy email accounts can join; managed children are added by staff | Create in space/manage assigned classes; owners oversee space | No special classroom bypass |
+| Assign an owned worksheet | No | To an authorized class in the selected space | No implicit teacher bypass |
 | Play a received assignment | Yes | No | No |
-| Read assignment attempts | Own active assignment | Assignments created through owned worksheets | No global bypass |
+| Read assignment attempts | Own active work and completed historical attempts | Assigned classes, creator-owned direct work, or space-owner oversight | No global bypass |
 | Read active public catalog | Public | Public | Public |
 | Create/version/activate catalog entries | No | No | Yes |
 | Upload/delete catalog assets | No | No | Yes |
@@ -162,21 +197,23 @@ POST /api/worksheets/42/attempts credentials: include + X-XSRF-TOKEN
 
 ## Canonical APIs
 
-Teachers can delete a class using `DELETE /api/classes/{id}`. This archives the class,
-disables its membership codes, removes its assignments from active lists and abandons
-unfinished attempts. Completed attempts, draft IDs and immutable revisions remain intact.
+Teachers archive a class using `DELETE /api/classes/{id}`. It becomes read-only,
+its memberships leave the active roster, and its deliveries close. Unfinished
+attempts become `ABANDONED`; completed attempts and immutable content remain.
+The student's profile code continues to work for other classes and finished history.
+There is no class restore operation in this release.
 
-`DELETE /api/assignments/classes/{classId}/revisions/{revisionId}` removes every recipient
-and repeated assignment of that published revision in the selected class. Direct assignments
-use `DELETE /api/assignments/direct/revisions/{revisionId}`. Neither operation deletes the
-source worksheet or assignments in other classes. Old codes cannot recreate the removed
-assignment; an explicit teacher reassignment creates fresh grants.
+`DELETE /api/assignments/batches/{batchId}` is the current close-delivery operation.
+Legacy class/revision and direct/revision delete routes close every matching grant
+in that authorized scope, including repeated deliveries. They do not delete source
+worksheets or work in other classes. Explicit reassignment creates fresh grants;
+re-adding a membership never reopens old work.
 
-The teacher report defaults to active homework. `GET /api/assignments/report?includeRemoved=true`
-also includes removed homework and archived classes, with `removedAt` on each removed grant.
-The Assignments page exposes this history through **Show deleted homework**; teachers retain
-access to the existing assignment and attempt history routes. V24 adds the nullable archive
-columns without rewriting existing content or results.
+`GET /api/assignments/report` returns authorized non-removed work by default.
+Add `includeRemoved=true` for historical/archived rows, and `classroomId` for
+a class-scoped report. The current Assignments screen has active/closed views.
+Legacy revision-group report links remain supported. Reports batch attempt/result
+reads; roster names/profiles load separately from progress.
 
 | Route | Purpose |
 | --- | --- |
@@ -289,6 +326,9 @@ Flyway migrations are forward-only. Never rewrite V1–V13 or another migration 
 - V20 tracks task image references in worksheet drafts and immutable revisions.
 - V21 adds personal student access codes.
 - V22 declares the editable exercise count and its default in existing built-in number-game definitions.
+- V23 adds photo-enabled built-in catalog versions without rewriting existing snapshots.
+- V24 adds class/archive and assignment-removal lifecycle fields.
+- V25 adds teaching spaces, team/invitation records, scoped students/credentials, co-teachers and delivery records. Existing IDs and saved work remain intact; valid old codes become aliases.
 
 The V13 upgrade migration can only snapshot the worksheet content available at upgrade time because older edits were not historically stored. Existing result history is preserved and linked to that snapshot.
 
@@ -307,13 +347,17 @@ http://localhost:5173. See the [root README](../README.md) for teammate setup,
 live frontend updates, backend rebuilds, persistent data, and container test commands.
 The commands below are the alternative workflow with Java installed locally.
 
-Requirements: Temurin Java 25 and Docker Desktop.
+Requirements: Temurin Java 25 and Docker Desktop. Compose publishes PostgreSQL on
+host port 5433; the existing local container for this checkout uses 55440. Confirm
+with `docker port worksheets-postgres 5432` and use the matching `DB_URL`. For the
+saved local setup, use the [session handoff](../docs/teaching-spaces-handoff.md).
 
 ```powershell
 # repository root
 docker compose up -d postgres
 
 # backend directory
+$env:DB_URL = 'jdbc:postgresql://localhost:5433/worksheets'
 .\mvnw.cmd clean spring-boot:run
 ```
 
@@ -330,14 +374,46 @@ uses Flyway's real migration discovery against an empty H2 database without exec
 PostgreSQL scripts, so duplicate versions and invalid filenames fail even without Docker.
 `verify` additionally runs Testcontainers PostgreSQL tests for a fresh V1-to-latest migration,
 Hibernate schema validation, HTTP startup, a populated V13-to-latest upgrade, and a populated
-V19-to-latest upgrade that preserves worksheet shares. PostgreSQL integration tests are
+V19-to-latest upgrade that preserves worksheet shares. Further upgrade fixtures cover
+V21 exercise-count compatibility, V22 photo versions, V23 archive fields and V24
+teaching-space migration with existing identities, code aliases and results. PostgreSQL integration tests are
 skipped with an explicit JUnit skip when Docker is unavailable; start Docker to run all checks.
 
 
-## Teaching spaces (V25)
+## Teaching-space API reference
 
-Teacher UI resources include `/api/spaces`, `/api/auth/context`, shared students, expiring invitations, and delegated credential operations. Requests use a validated `X-Space-Id`; student code sessions cannot change space. Existing `/api/auth/me` and legacy assignment/class routes remain compatible adapters. Student codes are no longer returned by the roster. Dedicated code endpoints require owner/delegated access and invalidate old sessions on rotation.
+All mutations use the existing session and CSRF protection. Space resources
+validate membership independently of frontend controls. Public signup remains
+teacher-first in the UI; platform ADMIN does not imply space-owner permissions.
 
-Assignment preview at `POST /api/worksheets/{id}/assignments/preview` returns `{revisionId, worksheet}`. Pass `revisionId` and optional `title` to assignment creation to assign the reviewed snapshot. `/api/assignments/batches/{batchId}` returns the authorized delivery; report requests accept `classroomId` for scoped queries. Completed history remains readable after closure/removal; unfinished work cannot be resumed.
+| Route | Purpose |
+| --- | --- |
+| `GET /api/auth/context` | Available spaces, selected space, scoped student and capabilities |
+| `POST /api/auth/context` | Select an authorized `spaceId`; code sessions stay bound |
+| `GET /api/spaces` | List the actor's spaces |
+| `PATCH /api/spaces/{spaceId}` | Owner renames the space |
+| `GET/PATCH/DELETE /api/spaces/{spaceId}/members[/{userId}]` | List team, delegate student-login access, or remove a teacher |
+| `POST /api/spaces/{spaceId}/owner/{userId}` | Transfer ownership to an existing team member |
+| `GET/POST /api/spaces/{spaceId}/invitations` | Owner lists or creates seven-day single-use invitations |
+| `DELETE /api/spaces/{spaceId}/invitations/{id}` | Revoke an invitation |
+| `POST /api/spaces/invitations/accept` | Signed-in teacher accepts a token |
+| `GET/POST /api/spaces/{spaceId}/students` | List/create scoped profiles; client searches the directory |
+| `POST /api/spaces/{spaceId}/students/bulk` | Reviewed transactional profiles/memberships, up to 200 rows |
+| `PATCH /api/spaces/{spaceId}/students/{id}` | Owner renames or archives a profile |
+| `POST /api/spaces/{spaceId}/students/{id}/credential[/rotate]` | Owner/delegated staff reprints or replaces a code |
+| `GET/POST /api/classes/{id}/teachers` | View teaching team or add/transfer lead teacher |
+| `DELETE /api/classes/{id}/teachers/{userId}` | Owner/lead removes a co-teacher |
+| `POST /api/worksheets/{id}/assignments/preview` | Return `{revisionId, worksheet}` for frozen review |
+| `GET/DELETE /api/assignments/batches/{batchId}` | Read authorized delivery or close it |
+| `POST /api/worksheets/join/choices` | Eligible legacy-code matches with class/title/date labels |
 
-Run `./mvnw verify` (Windows: `mvnw.cmd verify`) for unit tests plus populated PostgreSQL migration tests. Docker is required for the PostgreSQL suites. Never reset an existing database to apply this migration; take a backup first.
+Invitations are copied as links by the owner; no mail provider or external sending
+is implemented. Tokens are stored only as hashes and are single-use, expiring and
+revocable. Invited signup accepts `invitationToken` and joins the team directly.
+An existing teacher's personal classes stay in their own space. Transfer ownership
+and active lead-teacher duties before removing a teacher.
+
+For the completed rollout, exact verification results and database backup locations,
+see the [session handoff](../docs/teaching-spaces-handoff.md). Never reset an existing
+database to apply V25, and do not assume an older binary can write to the upgraded
+schema without restoring its matching backup.

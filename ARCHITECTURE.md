@@ -1,5 +1,7 @@
 # PlaySheets architecture
 
+Implemented model as of 2026-11-06. See the [session handoff](docs/teaching-spaces-handoff.md) for the final verification, local database state and restart instructions; the [backend guide](backend/README.md) and [frontend guide](my-react/FRONTEND.md) cover implementation contracts.
+
 ## Product and ownership
 
 One React client, one Spring Boot modular monolith, and PostgreSQL. Flyway owns schema changes. Teachers work in teaching spaces: an individual workspace, school, or teaching team.
@@ -16,7 +18,7 @@ Worksheet libraries remain private to their authors across spaces. Classes recei
 | Choose co-teachers or transfer class lead | Yes | Own classes | No |
 | Print/reset student codes across space | Yes | Explicit delegation | Explicit delegation |
 
-Space ownership is separate from platform ADMIN. A worksheet author's identity alone does not grant access to class results. Removing a teacher revokes their space access immediately; lead and owner responsibilities must be reassigned first.
+Space ownership is separate from platform ADMIN. A worksheet author's identity alone does not grant access to class results. Removing a teacher revokes their space access immediately; active lead-teacher and owner responsibilities must be reassigned first. Archived classes retain their history and do not block removing a former lead.
 
 ## Modules and interfaces
 
@@ -43,7 +45,7 @@ Directory search precedes creation. Duplicate names require an explicit choice, 
 
 The flow is Choose worksheet → Recipients → Review → Assign → Progress. Recipients are fixed after creation; additional recipients require a new delivery. Optional delivery titles distinguish repeated assignments of the same worksheet. Frozen revisions preserve game configurations and completed scores.
 
-Closing a delivery affects only its batch. Class archive closes its work and exposes read-only history. Completed student work remains available in Finished work after membership removal or closure; unfinished attempts become ABANDONED. Archived classes have no restore operation in this release. Historical student pages use direct authorized lookups, including former memberships.
+Closing a delivery affects only its batch. Class archive closes its work and exposes read-only history. Completed student work remains available in Finished work after membership removal or closure; unfinished attempts become ABANDONED. Archived classes have no restore operation in this release. Historical student pages use direct authorized lookups, including former memberships. Student history hides abandoned attempts from closed assignments while authorized teachers retain the full history.
 
 Legacy revision-group routes and worksheet codes remain adapters. An ambiguous worksheet code asks the student to choose among eligible deliveries rather than silently selecting the newest one. Historical general share codes can create direct work only inside the author's personal space and cannot bypass fixed class recipients.
 

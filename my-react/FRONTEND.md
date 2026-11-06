@@ -1,14 +1,16 @@
 # PlaySheets frontend
 
 The application uses React, Vite, strict TypeScript, React Router data routes,
-TanStack Query, Base UI, Tailwind and semantic CSS tokens. The Spring Boot API and
-deployment model are unchanged.
+TanStack Query, Base UI, Tailwind and semantic CSS tokens. It shares the Spring Boot
+session/CSRF transport and keeps the existing static-build deployment model.
+See the [architecture](../ARCHITECTURE.md) for the teaching-space API and permissions.
 
 ## Ownership and dependencies
 
 - **app** owns providers, capabilities, layouts and lazy routes.
 - **shared** owns accessible primitives, API transport, DTOs, photos and translations.
-- **features** owns worksheets, classrooms, assignments, reports and attempts.
+- **features** owns teaching spaces, student directory/access, classrooms, worksheets,
+  deliveries, reports, attempts and student workspaces.
 - **games** owns module metadata, pure engines, editors and players. Game modules
   cannot import product features. Players never save results themselves.
 
@@ -56,8 +58,10 @@ fingerprint. Offer restoration when it matches, or recovery into a separate
 worksheet when it differs. Never overwrite a newer server draft automatically.
 Storage failure leaves server saving available and displays a recovery notice.
 
-User-specific query data is cleared on identity changes. Mutations mark cached
-read models stale; screens with immediate edits update/refetch their own data.
+Resource query keys are `[userId, spaceId, ...resourceKey]`. Switching identity or
+space clears previous resource data and unmounts the old view while selection is
+pending. Mutations mark read models stale; screens with immediate edits
+update/refetch their own data. Private codes stay out of routine caches and draft recovery.
 Publication is an explicit action, never a background query on ordinary navigation.
 
 ## Visual rules
@@ -84,33 +88,67 @@ entry budget including its static dependencies and initial public route.
 Browser tests include stable visual baselines under `e2e/snapshots`. Review actual
 screens before updating them with `npx playwright test e2e/redesign.spec.js --update-snapshots`.
 
-For the real browser/backend contract test, start the app against a **disposable**
-PostgreSQL database and run `npm run test:live`. It creates an account, worksheets,
-a class, a child, uploads and saved results. It uses no API mocks. Never point it
-at a shared or production database. `E2E_BASE_URL` can select an existing frontend;
-otherwise Playwright starts Vite with the usual backend proxy.
+`npm run test:live` runs the original real-backend game/editor workflow only. To
+include teaching teams, shared students, login cards, invitations and EN/RO mobile
+checks, run both live specs against a **disposable** database/backend:
+
+```powershell
+# From my-react; QA backend uses its own database on host port 55441.
+$env:E2E_BASE_URL = 'http://localhost:8081'
+$env:E2E_LIVE_BACKEND = 'true'
+npm run test:e2e -- live-backend.spec.js teaching-spaces-live.spec.js --workers=1
+Remove-Item Env:E2E_BASE_URL, Env:E2E_LIVE_BACKEND
+```
+
+These tests create accounts, classes, uploads and results. Never point them at the
+normal local or shared database. Without an explicit base URL, Playwright starts
+Vite with its configured backend proxy; confirm that target before any live run.
+Use separate `--output` directories for concurrent suites.
 
 Backend verification uses `mvnw clean verify` with Docker available, including
 populated-database upgrades. The real-backend browser test and backend suite
 complement the fast mocked UI regressions.
 
-## Teacher and student architecture
+## Teacher, student and teaching-space modules
 
-`features/student` owns the learner layout, My work, Finished work and preferences.
-`app/guards.tsx` owns route session/role checks, with backend ownership checks still
-required. `shared/Brand.tsx` and `shared/LanguageMenu.tsx` are shared by both layouts.
-Teacher Home gives setup guidance and counts assignment deliveries, not recipients.
-Class pages reuse TeacherAssignments and Results in their tabs. Assignments are
-managed using batch UUIDs; legacy revision-group report routes remain compatible.
-The personal-code entry point keeps the two-code shortcut in an optional disclosure.
-Auth, students and teachers have separate layouts while the game registry, editors,
-players, configuration schemas and scoring contracts remain shared and unchanged.
+- `features/spaces` owns the context provider, team settings, invitation acceptance,
+  shared directory, reviewed bulk student picker and dedicated private access cards.
+- `features/classrooms` owns Overview / Students / Assignments / Progress, mobile
+  roster cards, co-teacher management, archived classes and former-student lookup.
+- `features/assignments` owns deliveries, exact links, result views and shared class/global
+  components. `worksheets/Sharing.tsx` owns recipient selection and frozen-version review.
+- `features/student` owns My work, Finished work, class filters, preferences and the
+  legacy-code chooser. Student views never request teacher reports.
+- `app/guards.tsx` owns entrance/role routing. Backend policy remains authoritative;
+  hiding an action is not permission enforcement. Brand, language and UI primitives
+  are shared, and game contracts remain independent of product modules.
 
+Class header and tabs have independent queries. A worksheet-library error cannot
+block the roster. Reports request the selected class on the server rather than
+loading every class and filtering only in the browser.
 
-## Teaching-space frontend
+Student profile IDs differ from authentication user IDs. Reuse the directory's
+`studentId` when adding an existing child; keep `userId` for legacy member and
+history paths. Duplicate display names do not imply the same identity. Owners edit
+shared names; owner/delegated staff manage login codes. Never expose credentials
+in list rows, reports, URLs with query strings, analytics or draft recovery.
 
-`features/spaces` owns the context provider, team settings, invitation flow, directory, reviewed bulk student picker, and private access cards. `useResource` keys include both authentication identity and space ID. Space switches unmount the old view and clear its resource caches; credentials are held only inside the dedicated access view, never roster or draft recovery data.
+A login card requests the primary code in its authorized view and renders a QR
+fragment link. Scanning clears the fragment before login. Reprinting preserves the
+code; rotation invalidates aliases and old code sessions. Code-authenticated children
+cannot switch space. Legacy email students choose a space when needed.
 
-Class tabs load their own resources and share the same scoped assignment/results components as global screens. Assignment review publishes a frozen revision before confirmation; submissions use that ID. Exact delivery links select existing recipient assignments. Student My work and Finished work show class labels and filters, including completed historical work.
+Assignment review publishes a frozen revision and submits that `revisionId` on
+confirmation. It shows recipients and accepts an optional delivery title. Recipient
+lists stay fixed after creation. New links select the exact batch and existing
+recipient assignment; legacy selectors show labeled choices when ambiguous.
 
-For real integration verification, start a disposable PostgreSQL-backed build, then set `E2E_BASE_URL` to its origin and `E2E_LIVE_BACKEND=true`, and run `npm run test:e2e -- teaching-spaces-live.spec.js --workers=1`. This creates test accounts and classes; never run it against a shared database. Use distinct Playwright `--output` directories when running separate suites simultaneously.
+Completed work stays visible in Finished work after class removal or delivery
+closure. Unfinished closed work cannot resume. Archived classes are read-only,
+and former-student pages use direct authorized member/history lookup.
+
+Keep English/Romanian headings, form labels, empty/error/loading states and print
+styles aligned. The completed run covered 320/390/1440px EN/RO teaching-space,
+directory and class-list pages, plus class tabs, game flows and printed QR cards.
+See [session handoff](../docs/teaching-spaces-handoff.md) for the final counts,
+local restart and backup notes. The accepted plan has no pending implementation work.
