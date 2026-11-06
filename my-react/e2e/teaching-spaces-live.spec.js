@@ -25,9 +25,10 @@ async function signup(context, name, invitationToken) {
   });
 }
 async function english(page) {
-  await page.addInitScript(() =>
-    localStorage.setItem("worksheet-language", "en"),
-  );
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("worksheet-language"))
+      localStorage.setItem("worksheet-language", "en");
+  });
 }
 test("real teaching team: shared students, frozen deliveries, delegated cards, login and history", async ({
   browser,
@@ -358,6 +359,7 @@ test("an invited signup joins the team directly and QR login opens the scoped st
   await expect(childPage).toHaveURL(/\/student$/);
   await expect(childPage.locator(".student-name")).toHaveText("QR child");
   expect(new URL(childPage.url()).hash).toBe("");
+  await page.goto("/space");
   for (const language of ["en", "ro"]) {
     await page.evaluate(
       (language) => localStorage.setItem("worksheet-language", language),
@@ -367,7 +369,21 @@ test("an invited signup joins the team directly and QR login opens the scoped st
       await page.setViewportSize({ width, height: 844 });
       for (const route of ["/space", "/students", "/classes"]) {
         await page.goto(route);
-        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        const headings =
+          language === "ro"
+            ? {
+                "/space": "Spațiu de predare",
+                "/students": "Elevi",
+                "/classes": "Clase",
+              }
+            : {
+                "/space": "Teaching space",
+                "/students": "Students",
+                "/classes": "Classes",
+              };
+        await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+          headings[route],
+        );
         if (route !== "/classes")
           await expect(page.locator(".directory-row").first()).toBeVisible();
         expect(
