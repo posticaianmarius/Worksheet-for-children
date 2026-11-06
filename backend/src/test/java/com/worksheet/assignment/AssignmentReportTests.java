@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class AssignmentReportTests {
     @Autowired MockMvc mvc;
+    @Autowired com.worksheet.space.SpaceAccess spaces;
     @Autowired UserRepository users;
     @Autowired ClassroomRepository classrooms;
     @Autowired WorksheetRepository worksheets;
@@ -127,7 +128,9 @@ class AssignmentReportTests {
     }
 
     private WorksheetAssignment assign(WorksheetRevision revision, Classroom classroom, String name) {
-        return assignments.save(new WorksheetAssignment(UUID.randomUUID(), revision, classroom, user(name, UserRole.USER)));
+        var assignment=new WorksheetAssignment(UUID.randomUUID(), revision, classroom, user(name, UserRole.USER));
+        spaces.assignmentSpace(assignment);
+        return assignments.save(assignment);
     }
 
     private MockHttpSession session(User user) {

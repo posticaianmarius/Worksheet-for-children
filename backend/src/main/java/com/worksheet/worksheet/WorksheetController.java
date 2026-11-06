@@ -68,6 +68,9 @@ public class WorksheetController {
         return new WorksheetShareResponse(shares.rotate(id, sessions.requireUser(request)));
     }
 
+    @PostMapping("/join/choices")
+    public java.util.List<WorksheetShareService.Choice> choices(@RequestBody JoinWorksheetRequest input,HttpServletRequest request) { return shares.choices(input.code(),sessions.requireUser(request)); }
+
     @PostMapping("/join")
     public JoinWorksheetResponse joinByCode(@Valid @RequestBody JoinWorksheetRequest input,
                                             HttpServletRequest request) {

@@ -22,6 +22,7 @@ import tools.jackson.databind.node.JsonNodeFactory;
 
 @Service
 public class WorksheetAttemptService {
+    private final com.worksheet.space.SpaceAccess spaces;
     private final MiniGameDefinitionService definitions;
     private final WorksheetAttemptRepository attempts;
     private final WorksheetAttemptItemResultRepository results;
@@ -38,7 +39,8 @@ public class WorksheetAttemptService {
                                    WorksheetRevisionService revisionService,
                                    WorksheetRevisionItemRepository revisionItems,
                                    JsonSchemaValidationService schemaValidator,
-                                   MiniGameDefinitionService definitions) {
+                                   MiniGameDefinitionService definitions,com.worksheet.space.SpaceAccess spaces) {
+        this.spaces=spaces;
         this.definitions = definitions;
         this.attempts = attempts;
         this.results = results;
@@ -62,7 +64,7 @@ public class WorksheetAttemptService {
     public WorksheetAttemptResponse startAssigned(Long assignmentId, User actor) {
         if (actor.getRole() != UserRole.USER) throw forbidden();
         WorksheetAssignment assignment = assignments.findById(assignmentId)
-            .filter(value -> value.getUser().getId().equals(actor.getId()) && value.getRevokedAt() == null)
+            .filter(value -> spaces.canWrite(value,actor))
             .orElseThrow(() -> notFound("Assignment"));
         requireHasItems(assignment.getWorksheetRevision());
         return response(attempts.save(new WorksheetAttempt(assignment.getWorksheetRevision(), assignment)));
@@ -141,9 +143,7 @@ public class WorksheetAttemptService {
             return attempt;
         }
         WorksheetAssignment assignment = attempt.getAssignment();
-        boolean teacher = assignment.getTeacher().getId().equals(actor.getId());
-        boolean user = assignment.getUser().getId().equals(actor.getId()) && assignment.getRevokedAt() == null;
-        if (!teacher && !user) throw notFound("Attempt");
+        if(!spaces.canRead(assignment,actor) || (actor.getRole()==UserRole.USER && assignment.getRevokedAt()!=null && attempt.getStatus()!=AttemptStatus.COMPLETED)) throw notFound("Attempt");
         return attempt;
     }
 
@@ -152,7 +152,7 @@ public class WorksheetAttemptService {
         if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Attempt is no longer editable.");
         }
-        if (attempt.getAssignment() != null && !attempt.getAssignment().getUser().getId().equals(actor.getId())) {
+        if (attempt.getAssignment() != null && !spaces.canWrite(attempt.getAssignment(),actor)) {
             throw notFound("Attempt");
         }
         return attempt;
@@ -160,9 +160,7 @@ public class WorksheetAttemptService {
 
     private WorksheetAssignment requireReadableAssignment(Long id, User actor) {
         WorksheetAssignment assignment = assignments.findById(id).orElseThrow(() -> notFound("Assignment"));
-        boolean teacher = assignment.getTeacher().getId().equals(actor.getId());
-        boolean user = assignment.getUser().getId().equals(actor.getId()) && assignment.getRevokedAt() == null;
-        if (!teacher && !user) throw notFound("Assignment");
+        if(!spaces.canRead(assignment,actor)) throw notFound("Assignment");
         return assignment;
     }
 

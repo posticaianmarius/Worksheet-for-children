@@ -15,5 +15,5 @@ public record WorksheetAssignmentResponse(
     String userName,
     Instant assignedAt,
     Instant revokedAt,
-    AssignmentStatus status
+    AssignmentStatus status, String deliveryTitle,String classroomName
 ) {}

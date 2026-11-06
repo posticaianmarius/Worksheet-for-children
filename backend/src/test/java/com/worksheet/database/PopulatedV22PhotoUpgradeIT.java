@@ -45,7 +45,7 @@ class PopulatedV22PhotoUpgradeIT {
                 INSERT INTO mini_game_definition (id, name, type, version, configuration_schema, default_configuration, active, owner_user_id)
                   VALUES (900, 'Owned', 'owned-game', 1, '{}'::jsonb, '{}'::jsonb, TRUE, 100)
                 """);
-            var latest = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()).load();
+            var latest = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()).target("24").load();
             assertEquals(2, latest.migrate().migrationsExecuted);
             assertEquals(0, latest.migrate().migrationsExecuted);
             latest.validate();

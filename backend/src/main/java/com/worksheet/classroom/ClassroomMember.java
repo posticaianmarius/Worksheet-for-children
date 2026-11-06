@@ -11,6 +11,9 @@ public class ClassroomMember {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "student_id")
+    private Long studentId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "classroom_id", nullable = false)
     private Classroom classroom;
@@ -37,6 +40,8 @@ public class ClassroomMember {
     }
 
     public Long getId() { return id; }
+    public Long getStudentId() { return studentId; }
+    public void setStudentId(Long value) { studentId = value; }
     public Classroom getClassroom() { return classroom; }
     public User getUser() { return user; }
     public Instant getJoinedAt() { return joinedAt; }

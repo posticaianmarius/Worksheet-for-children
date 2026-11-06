@@ -24,6 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional
 public class ClassroomService {
+    private final com.worksheet.space.SpaceAccess spaces;
+    private final com.worksheet.space.StudentDirectoryService directory;
     private final JoinCodeGenerator codes;
     private final ClassroomRepository classrooms;
     private final ClassroomMemberRepository members;
@@ -38,7 +40,8 @@ public class ClassroomService {
                             WorksheetAssignmentRepository assignments, WorksheetAttemptService attempts,
                             JoinCodeGenerator codes, UserRepository users,
                             WorksheetAttemptRepository attemptRepository,
-                            WorksheetAssignmentService assignmentService, WorksheetShareService shares) {
+                            WorksheetAssignmentService assignmentService, WorksheetShareService shares, com.worksheet.space.SpaceAccess spaces, com.worksheet.space.StudentDirectoryService directory) {
+        this.spaces=spaces; this.directory=directory;
         this.classrooms = classrooms;
         this.members = members;
         this.assignments = assignments;
@@ -56,28 +59,29 @@ public class ClassroomService {
         if(name.isEmpty() || name.length() > 150) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Class name must contain 1 to 150 characters.");
         }
-        return toResponse(classrooms.save(new Classroom(teacher, name, nextJoinCode())), true);
+        var classroom=new Classroom(teacher,name,nextJoinCode());
+        classroom.setSpaceId(spaces.currentSpace(teacher));
+        classrooms.saveAndFlush(classroom);
+        spaces.addLead(classroom);
+        return toResponse(classroom,true);
     }
 
     public List<ClassroomResponse> getAll(User actor) {
-        if(actor.getRole() == UserRole.TEACHER) {
-            return classrooms.findByTeacher_IdOrderByCreatedAtDesc(actor.getId()).stream()
-                .filter(classroom -> classroom.getArchivedAt() == null)
-                .map(classroom -> toResponse(classroom, true)).toList();
+        Long spaceId=spaces.currentSpace(actor);
+        if(actor.getRole()==UserRole.TEACHER) {
+            // Backfill only pre-space test/legacy objects; production rows are migrated by Flyway.
+            classrooms.findByTeacher_IdOrderByCreatedAtDesc(actor.getId()).forEach(spaces::classSpace);
+            return classrooms.findBySpaceIdOrderByCreatedAtDesc(spaceId).stream().filter(c -> spaces.canTeach(c,actor)).map(c -> toResponse(c,true)).toList();
         }
         return members.findByUser_IdAndLeftAtIsNullOrderByJoinedAtDesc(actor.getId()).stream()
-            .filter(member -> member.getClassroom().getArchivedAt() == null)
-            .map(member -> toResponse(member.getClassroom(), false)).toList();
+            .filter(m -> java.util.Objects.equals(spaces.classSpace(m.getClassroom()),spaceId) && m.getClassroom().getArchivedAt()==null)
+            .map(m -> toResponse(m.getClassroom(),false)).toList();
     }
-
-    public ClassroomResponse getById(Long classroomId, User actor) {
-        Classroom classroom = classrooms.findById(classroomId)
-            .filter(value -> value.getArchivedAt() == null)
-            .orElseThrow(() -> notFound());
-        boolean teacher = classroom.getTeacher().getId().equals(actor.getId());
-        boolean member = members.existsByClassroom_IdAndUser_IdAndLeftAtIsNull(classroomId, actor.getId());
-        if(!teacher && !member) throw notFound();
-        return toResponse(classroom, teacher);
+    public ClassroomResponse getById(Long classroomId,User actor) {
+        if(actor.getRole()==UserRole.TEACHER) return toResponse(spaces.requireClass(classroomId,actor,false),true);
+        var classroom=classrooms.findById(classroomId).filter(c -> c.getArchivedAt()==null).orElseThrow(this::notFound);
+        if(!spaces.selected(spaces.classSpace(classroom),actor) || !members.existsByClassroom_IdAndUser_IdAndLeftAtIsNull(classroomId,actor.getId())) throw notFound();
+        return toResponse(classroom,false);
     }
 
     @Transactional
@@ -93,7 +97,7 @@ public class ClassroomService {
         if(membership != null && membership.getLeftAt() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This user is already an active class member.");
         }
-        if(membership == null) members.save(new ClassroomMember(classroom, user));
+        if(membership == null) { var added=new ClassroomMember(classroom,user); added.setStudentId(spaces.ensureStudent(spaces.classSpace(classroom),user).id); members.save(added); }
         else {
             membership.rejoin();
             members.save(membership);
@@ -101,30 +105,26 @@ public class ClassroomService {
         return toResponse(classroom, false);
     }
 
-    public List<ClassroomMemberResponse> getMembers(Long classroomId, User teacher) {
-        requireOwnedClassroom(classroomId, teacher);
-        return members.findByClassroom_IdAndLeftAtIsNullOrderByJoinedAt(classroomId).stream()
-            .map(this::memberResponse)
-            .toList();
+    public List<ClassroomMemberResponse> getMembers(Long classroomId,User teacher) {
+        spaces.requireClass(classroomId,teacher,false);
+        return members.findByClassroom_IdOrderByJoinedAt(classroomId).stream().map(this::memberResponse).toList();
     }
-
-    public ClassroomMemberResponse addStudent(Long classroomId, User teacher, StudentNameRequest request) {
-        Classroom classroom = requireOwnedClassroom(classroomId, teacher);
-        // These identities only store progress. Children never need an email or password.
-        User child = users.save(new User(studentName(request.name()),
-            UUID.randomUUID() + "@student.invalid", "!", UserRole.USER));
-        ClassroomMember member = new ClassroomMember(classroom, child);
-        member.setStudentCode(nextStudentCode());
-        return memberResponse(members.save(member));
+    public ClassroomMemberResponse addStudent(Long classroomId,User teacher,StudentNameRequest request) {
+        var classroom=requireOwnedClassroom(classroomId,teacher);
+        var profile=request.studentId()==null?directory.create(classroom.getSpaceId(),request.name(),Boolean.TRUE.equals(request.allowDuplicate()),teacher):directory.get(classroom.getSpaceId(),request.studentId());
+        if(profile.archivedAt!=null) throw notFound();
+        var user=directory.user(profile);
+        var membership=members.findByClassroom_IdAndUser_Id(classroomId,user.getId()).orElse(null);
+        if(membership==null) membership=new ClassroomMember(classroom,user);
+        else if(membership.getLeftAt()==null) throw new ResponseStatusException(HttpStatus.CONFLICT,"Student is already in this class.");
+        else membership.rejoin();
+        membership.setStudentId(profile.id);
+        return memberResponse(members.save(membership));
     }
-
-    public ClassroomMemberResponse renameStudent(Long classroomId, Long userId, User teacher, StudentNameRequest request) {
-        ClassroomMember member = requireMember(classroomId, userId, teacher);
-        if (member.getLeftAt() != null) throw notFound();
-        if (!"!".equals(member.getUser().getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only teacher-managed children can be renamed.");
-        }
-        member.getUser().rename(studentName(request.name()));
+    public ClassroomMemberResponse renameStudent(Long classroomId,Long userId,User teacher,StudentNameRequest request) {
+        var member=requireMember(classroomId,userId,teacher);
+        var profile=profile(member);
+        directory.update(profile.spaceId,profile.id,request.name(),false,teacher);
         return memberResponse(member);
     }
 
@@ -132,11 +132,9 @@ public class ClassroomService {
         return studentTests(requireMember(classroomId, userId, teacher));
     }
 
-    public ClassroomMemberResponse issueStudentCode(Long classroomId, Long userId, User teacher) {
-        ClassroomMember member = requireMember(classroomId, userId, teacher);
-        if (member.getLeftAt() != null) throw notFound();
-        if (member.getStudentCode() == null) member.setStudentCode(nextStudentCode());
-        return memberResponse(members.save(member));
+    public ClassroomMemberResponse issueStudentCode(Long classroomId,Long userId,User teacher) {
+        var member=requireMember(classroomId,userId,teacher); var p=profile(member);
+        return credentialResponse(member,directory.credential(p.spaceId,p.id,false,teacher).code());
     }
 
     public String startTest(Long classroomId, Long worksheetId, User teacher) {
@@ -146,16 +144,23 @@ public class ClassroomService {
         return code;
     }
 
-    public ClassroomMemberResponse rotateStudentCode(Long classroomId, Long userId, User teacher) {
-        ClassroomMember member = requireMember(classroomId, userId, teacher);
-        if (member.getLeftAt() != null || member.getClassroom().getArchivedAt() != null) throw notFound();
-        member.setStudentCode(nextStudentCode());
-        return memberResponse(members.save(member));
+    public ClassroomMemberResponse rotateStudentCode(Long classroomId,Long userId,User teacher) {
+        var member=requireMember(classroomId,userId,teacher); var p=profile(member);
+        return credentialResponse(member,directory.credential(p.spaceId,p.id,true,teacher).code());
     }
-
-    private ClassroomMember requireMember(Long classroomId, Long userId, User teacher) {
-        requireOwnedClassroom(classroomId, teacher);
-        return members.findByClassroom_IdAndUser_Id(classroomId, userId).orElseThrow(this::notFound);
+    private ClassroomMember requireMember(Long classroomId,Long userId,User teacher) {
+        spaces.requireClass(classroomId,teacher,false);
+        return members.findByClassroom_IdAndUser_Id(classroomId,userId).orElseThrow(this::notFound);
+    }
+    private com.worksheet.space.SpaceStudent profile(ClassroomMember member) {
+        var p=spaces.ensureStudent(spaces.classSpace(member.getClassroom()),member.getUser());
+        if(member.getStudentId()==null) member.setStudentId(p.id);
+        return p;
+    }
+    public ClassroomMemberResponse student(Long classroomId,Long userId,User teacher) { return memberResponse(requireMember(classroomId,userId,teacher)); }
+    private ClassroomMemberResponse credentialResponse(ClassroomMember member,String code) {
+        var p=profile(member);
+        return new ClassroomMemberResponse(member.getUser().getId(),p.name,null,member.getJoinedAt(),code,null,null,null,p.id,member.getLeftAt());
     }
 
     private List<StudentTestResponse> studentTests(ClassroomMember member) {
@@ -170,17 +175,7 @@ public class ClassroomService {
     }
 
     private ClassroomMemberResponse memberResponse(ClassroomMember member) {
-        List<StudentTestResponse> completed = studentTests(member).stream()
-            .filter(test -> test.status() == AttemptStatus.COMPLETED)
-            .sorted(Comparator.comparing(StudentTestResponse::completedAt).reversed()).toList();
-        Integer last = completed.isEmpty() ? null : percent(completed.getFirst());
-        Integer average = completed.isEmpty() ? null : (int) Math.round(
-            completed.stream().mapToInt(this::percent).average().orElse(0));
-        String worst = completed.stream().min(Comparator.comparingInt(this::percent))
-            .map(StudentTestResponse::name).orElse(null);
-        return new ClassroomMemberResponse(member.getUser().getId(), member.getUser().getName(),
-            "!".equals(member.getUser().getPasswordHash()) ? null : member.getUser().getEmail(), member.getJoinedAt(),
-            member.getStudentCode(), last, average, worst);
+        return credentialResponse(member,null);
     }
 
     private int percent(StudentTestResponse test) {
@@ -221,8 +216,8 @@ public class ClassroomService {
 
     public void archive(Long classroomId, User teacher) {
         requireRole(teacher, UserRole.TEACHER);
-        Classroom classroom = classrooms.findByIdAndTeacher_Id(classroomId, teacher.getId())
-            .orElseThrow(this::notFound);
+        Classroom classroom = spaces.requireClass(classroomId,teacher,false);
+        if(classroom.getArchivedAt()!=null) return;
         classroom.archive();
         members.findByClassroom_IdAndLeftAtIsNullOrderByJoinedAt(classroomId)
             .forEach(ClassroomMember::leave);
@@ -231,16 +226,12 @@ public class ClassroomService {
         attempts.abandonActiveForAssignments(affected);
     }
 
-    public Classroom requireOwnedClassroom(Long classroomId, User teacher) {
-        requireRole(teacher, UserRole.TEACHER);
-        return classrooms.findByIdAndTeacher_Id(classroomId, teacher.getId())
-            .filter(value -> value.getArchivedAt() == null)
-            .orElseThrow(() -> notFound());
-    }
+    public Classroom requireOwnedClassroom(Long classroomId,User teacher) { return spaces.requireClass(classroomId,teacher,true); }
 
     private ClassroomResponse toResponse(Classroom classroom, boolean includeJoinCode) {
         return new ClassroomResponse(classroom.getId(), classroom.getName(), classroom.getTeacher().getId(),
-            classroom.getTeacher().getName(), includeJoinCode ? classroom.getJoinCode() : null, classroom.getCreatedAt());
+            classroom.getTeacher().getName(), includeJoinCode ? classroom.getJoinCode() : null, classroom.getCreatedAt(), classroom.getSpaceId(), classroom.getArchivedAt(),
+            members.countByClassroom_IdAndLeftAtIsNull(classroom.getId()));
     }
 
     private String nextJoinCode() {

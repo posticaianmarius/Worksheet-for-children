@@ -23,9 +23,12 @@ public class WorksheetAssignmentController {
     }
 
     @GetMapping("/assignments/report")
-    public List<AssignmentReportResponse> report(@RequestParam(defaultValue = "false") boolean includeRemoved, HttpServletRequest request) {
-        return reports.getReport(sessions.requireRole(request, UserRole.TEACHER), includeRemoved);
+    public List<AssignmentReportResponse> report(@RequestParam(defaultValue = "false") boolean includeRemoved,@RequestParam(required=false) Long classroomId, HttpServletRequest request) {
+        return reports.getReport(sessions.requireRole(request, UserRole.TEACHER), includeRemoved,classroomId);
     }
+
+    @GetMapping("/assignments/batches/{batchId}")
+    public List<WorksheetAssignmentResponse> delivery(@PathVariable java.util.UUID batchId,HttpServletRequest request) { return service.delivery(batchId,sessions.requireUser(request)); }
 
     @DeleteMapping("/assignments/batches/{batchId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -44,6 +47,9 @@ public class WorksheetAssignmentController {
     public void removeDirectGroup(@PathVariable Long revisionId, HttpServletRequest request) {
         service.removeGroup(null, revisionId, sessions.requireRole(request, UserRole.TEACHER));
     }
+
+    @PostMapping("/worksheets/{worksheetId}/assignments/preview")
+    public WorksheetAssignmentService.Preview preview(@PathVariable Long worksheetId,HttpServletRequest request) { return service.preview(worksheetId,sessions.requireRole(request,UserRole.TEACHER)); }
 
     @PostMapping("/worksheets/{worksheetId}/assignments")
     @ResponseStatus(HttpStatus.CREATED)

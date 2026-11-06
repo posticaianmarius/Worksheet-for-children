@@ -16,12 +16,15 @@ import java.util.List;
 @Service
 @Transactional
 public class MiniGameResultService {
+    private final com.worksheet.space.SpaceAccess spaces;
+    private final com.worksheet.auth.UserRepository users;
     private final MiniGameResultRepository repository;
     private final WorksheetResultRepository worksheetResultRepository;
     private final WorksheetItemRepository worksheetItemRepository;
     private final JsonSchemaValidationService schemaValidator;
 
-    public MiniGameResultService(MiniGameResultRepository repository, WorksheetResultRepository worksheetResultRepository, WorksheetItemRepository worksheetItemRepository, JsonSchemaValidationService schemaValidator) {
+    public MiniGameResultService(MiniGameResultRepository repository, WorksheetResultRepository worksheetResultRepository, WorksheetItemRepository worksheetItemRepository, JsonSchemaValidationService schemaValidator,com.worksheet.space.SpaceAccess spaces,com.worksheet.auth.UserRepository users) {
+        this.spaces=spaces; this.users=users;
         this.repository = repository;
         this.worksheetResultRepository = worksheetResultRepository;
         this.worksheetItemRepository = worksheetItemRepository;
@@ -80,11 +83,9 @@ public class MiniGameResultService {
             }
             return result;
         }
-        boolean student = result.getAssignment().getUser().getId().equals(userId) && result.getAssignment().getRevokedAt() == null;
-        boolean teacher = result.getAssignment().getTeacher().getId().equals(userId);
-        if((write && !student) || (!write && !student && !teacher)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Worksheet result not found.");
-        }
+        var actor=users.findById(userId).orElseThrow(com.worksheet.space.SpaceAccess::missing);
+        if(write?!spaces.canWrite(result.getAssignment(),actor):!spaces.canRead(result.getAssignment(),actor))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Worksheet result not found.");
         return result;
     }
 

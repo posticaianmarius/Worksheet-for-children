@@ -56,7 +56,7 @@ class PopulatedV19UpgradeIT {
             Flyway latest = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .load();
-            assertEquals(5, latest.migrate().migrationsExecuted);
+            assertEquals(6, latest.migrate().migrationsExecuted);
             latest.validate();
             assertEquals(0, latest.migrate().migrationsExecuted);
 

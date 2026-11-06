@@ -13,14 +13,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 public class AssignmentReportService {
+    private final com.worksheet.space.SpaceAccess spaces;
     private final WorksheetAssignmentRepository assignments;
     private final WorksheetAttemptRepository attempts;
     private final WorksheetResultRepository results;
 
     public AssignmentReportService(WorksheetAssignmentRepository assignments,
-            WorksheetAttemptRepository attempts, WorksheetResultRepository results) {
+            WorksheetAttemptRepository attempts, WorksheetResultRepository results,com.worksheet.space.SpaceAccess spaces) {
+        this.spaces=spaces;
         this.assignments = assignments;
         this.attempts = attempts;
         this.results = results;
@@ -30,8 +32,11 @@ public class AssignmentReportService {
         return getReport(teacher, false);
     }
 
-    public List<AssignmentReportResponse> getReport(User teacher, boolean includeRemoved) {
-        var owned = assignments.findByWorksheetRevision_Worksheet_User_IdOrderByAssignedAtDesc(teacher.getId()).stream()
+    public List<AssignmentReportResponse> getReport(User teacher,boolean includeRemoved) { return getReport(teacher,includeRemoved,null); }
+    public List<AssignmentReportResponse> getReport(User teacher, boolean includeRemoved,Long classroomId) {
+        if(classroomId!=null) spaces.requireClass(classroomId,teacher,false);
+        var owned = assignments.findVisible(spaces.currentSpace(teacher),teacher.getId(),spaces.teacher(spaces.currentSpace(teacher),teacher).owner,classroomId).stream()
+            .filter(value -> spaces.canRead(value,teacher))
             .filter(value -> includeRemoved || (value.getRemovedAt() == null
                 && (value.getClassroom() == null || value.getClassroom().getArchivedAt() == null))).toList();
         if (owned.isEmpty()) return List.of();
@@ -76,6 +81,6 @@ public class AssignmentReportService {
             assignment.getRemovedAt() != null ? "REMOVED" : codeMatches ? "ACTIVE" : worksheet.getShareCode() == null ? "NOT_SHARED" : "VERSION_CHANGED",
             assignment.getUser().getId(), assignment.getUser().getName(), assignment.getAssignedAt(),
             assignment.getRevokedAt(), assignment.getRemovedAt(), status, useLegacy || completed == null ? null : completed.getId(),
-            score, maxScore, completedAt, assignment.getBatchId());
+            score, maxScore, completedAt, assignment.getBatchId(),spaces.register(assignment,null).title);
     }
 }

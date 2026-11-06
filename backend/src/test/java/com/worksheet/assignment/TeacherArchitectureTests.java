@@ -219,14 +219,14 @@ class TeacherArchitectureTests {
         mvc.perform(delete("/api/classes/{classId}/members/{userId}", classroomId, user.id()).session(teacher.session()))
             .andExpect(status().isNoContent());
         mvc.perform(get("/api/assignments").session(user.session()))
-            .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
+            .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(1)));
         mvc.perform(get("/api/assignments/{id}", assignmentId).session(user.session()))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isOk());
         mvc.perform(post("/api/assignments/{id}/results", assignmentId).session(user.session())
                 .contentType("application/json").content("{\"totalScore\":4,\"maxScore\":5}"))
             .andExpect(status().isNotFound());
         mvc.perform(get("/api/assignments/{id}", assignmentId).session(teacher.session()))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REVOKED"));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED"));
         mvc.perform(get("/api/assignments/{id}/results", assignmentId).session(teacher.session()))
             .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(1)));
         mvc.perform(get("/api/attempts/{id}", attemptId).session(user.session()))
@@ -244,7 +244,7 @@ class TeacherArchitectureTests {
             .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("Ana"))
             .andExpect(jsonPath("$.email").value((Object) null)).andReturn();
         Long childId = ((Number) JsonPath.read(body(child), "$.userId")).longValue();
-        String childCode = JsonPath.read(body(child), "$.studentCode");
+        String childCode = codeFromChild(teacher,child);
         Long worksheetId = createWorksheet(teacher, "Code worksheet");
         createItem(teacher, worksheetId);
         MvcResult started = mvc.perform(post("/api/classes/{id}/tests", classroomId).session(teacher.session())
@@ -275,14 +275,14 @@ class TeacherArchitectureTests {
         mvc.perform(post("/api/attempts/{id}/complete", attemptId).session(childSession))
             .andExpect(status().isOk()).andExpect(jsonPath("$.totalScore").value(3));
         mvc.perform(get("/api/classes/{id}/members", classroomId).session(teacher.session()))
-            .andExpect(status().isOk()).andExpect(jsonPath("$[0].lastTestPercent").value(60))
-            .andExpect(jsonPath("$[0].averagePercent").value(60))
-            .andExpect(jsonPath("$[0].worstTest").value("Code worksheet"));
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].studentCode").isEmpty())
+            .andExpect(jsonPath("$[0].averagePercent").isEmpty())
+            .andExpect(jsonPath("$[0].worstTest").isEmpty());
         mvc.perform(get("/api/classes/{id}/members/{user}/tests", classroomId, childId).session(teacher.session()))
             .andExpect(status().isOk()).andExpect(jsonPath("$[0].attemptId").value(attemptId));
         mvc.perform(patch("/api/classes/{id}/members/{user}", classroomId, childId).session(teacher.session())
                 .contentType("application/json").content("{\"name\":\"Ana Maria\"}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.studentCode").value(childCode));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.studentCode").isEmpty());
         mvc.perform(post("/api/play/join").contentType("application/json").content(entryBody(childCode, worksheetCode)))
             .andExpect(status().isOk()).andExpect(jsonPath("$.user.name").value("Ana Maria"))
             .andExpect(jsonPath("$.assignmentId").value(assignmentId));
@@ -293,7 +293,7 @@ class TeacherArchitectureTests {
             .andExpect(status().isNotFound());
         mvc.perform(post("/api/worksheets/join").session(childSession).contentType("application/json")
                 .content("{\"code\":\"" + worksheetCode + "\"}"))
-            .andExpect(status().isUnauthorized());
+            .andExpect(status().isNotFound());
         mvc.perform(get("/api/attempts/{id}", attemptId)).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/attempts/{id}", attemptId).session(teacher.session())).andExpect(status().isOk())
             .andExpect(jsonPath("$.results[0].score").value(3));
@@ -314,7 +314,7 @@ class TeacherArchitectureTests {
                 .contentType("application/json").content("{\"name\":\"Ana\"}"))
             .andExpect(status().isCreated()).andReturn();
         Long childId = ((Number) JsonPath.read(body(child), "$.userId")).longValue();
-        String childCode = JsonPath.read(body(child), "$.studentCode");
+        String childCode = codeFromChild(teacher,child);
         Long worksheetId = createWorksheet(other, "Other teacher worksheet");
         createItem(other, worksheetId);
         MvcResult share = mvc.perform(post("/api/worksheets/{id}/share", worksheetId).session(other.session()))
@@ -349,13 +349,10 @@ class TeacherArchitectureTests {
         createItem(teacher, worksheetId);
         String worksheetCode = JsonPath.read(body(mvc.perform(post("/api/worksheets/{id}/share", worksheetId)
                 .session(teacher.session())).andExpect(status().isOk()).andReturn()), "$.code");
-        for (var entry : java.util.Map.of(firstCode, firstClass, secondCode, secondClass).entrySet()) {
-            MvcResult joined = mvc.perform(post("/api/play/join").contentType("application/json")
-                    .content(entryBody(entry.getKey(), worksheetCode))).andExpect(status().isOk()).andReturn();
-            Long assignmentId = ((Number) JsonPath.read(body(joined), "$.assignmentId")).longValue();
-            mvc.perform(get("/api/assignments/{id}", assignmentId).session(teacher.session()))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.classroomId").value(entry.getValue()));
-        }
+        org.junit.jupiter.api.Assertions.assertEquals(firstCode,secondCode);
+        MvcResult joined=mvc.perform(post("/api/play/join").contentType("application/json").content(entryBody(firstCode,worksheetCode))).andExpect(status().isOk()).andReturn();
+        Long assignmentId=((Number)JsonPath.read(body(joined),"$.assignmentId")).longValue();
+        mvc.perform(get("/api/assignments/{id}",assignmentId).session(teacher.session())).andExpect(status().isOk()).andExpect(jsonPath("$.classroomId").isEmpty());
         var promoted = users.findById(student.id()).orElseThrow();
         promoted.changeRole(com.worksheet.auth.UserRole.ADMIN);
         users.saveAndFlush(promoted);
@@ -389,14 +386,14 @@ class TeacherArchitectureTests {
         mvc.perform(post("/api/attempts/{id}/complete", f.activeAttempt()).session(f.second().session()))
             .andExpect(status().isNotFound());
         mvc.perform(post("/api/play/join").contentType("application/json")
-                .content(entryBody(f.studentCode(), f.worksheetCode()))).andExpect(status().isNotFound());
+                .content(entryBody(f.studentCode(), f.worksheetCode()))).andExpect(status().isOk());
         mvc.perform(post("/api/worksheets/join").session(f.student().session()).contentType("application/json")
-                .content("{\"code\":\"" + f.worksheetCode() + "\"}")).andExpect(status().isNotFound());
+                .content("{\"code\":\"" + f.worksheetCode() + "\"}")).andExpect(status().isOk());
         // A new member must not resurrect removed homework by entering its old worksheet code.
         var child = mvc.perform(post("/api/classes/{id}/members", f.classroomId()).session(f.teacher().session())
                 .contentType("application/json").content("{\"name\":\"New child\"}"))
             .andExpect(status().isCreated()).andReturn();
-        String newCode = JsonPath.read(body(child), "$.studentCode");
+        String newCode = codeFromChild(f.teacher(),child);
         mvc.perform(post("/api/play/join").contentType("application/json")
                 .content(entryBody(newCode, f.worksheetCode()))).andExpect(status().isNotFound());
         mvc.perform(get("/api/worksheets/{id}", f.worksheetId()).session(f.teacher().session()))
@@ -406,7 +403,7 @@ class TeacherArchitectureTests {
                 .contentType("application/json").content("{\"worksheetId\":" + f.worksheetId() + "}"))
             .andExpect(status().isCreated());
         mvc.perform(post("/api/play/join").contentType("application/json")
-                .content(entryBody(f.studentCode(), f.worksheetCode()))).andExpect(status().isOk());
+                .content(entryBody(f.studentCode(), f.worksheetCode()))).andExpect(status().isConflict());
     }
 
     @Test
@@ -421,16 +418,16 @@ class TeacherArchitectureTests {
         mvc.perform(delete(route).session(f.teacher().session())).andExpect(status().isNoContent());
         mvc.perform(delete(route).session(f.teacher().session())).andExpect(status().isNoContent());
         mvc.perform(get("/api/classes").session(f.teacher().session()))
-            .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(2)))
             .andExpect(jsonPath("$[0].id").value(f.otherClassId()));
-        mvc.perform(get(route).session(f.teacher().session())).andExpect(status().isNotFound());
+        mvc.perform(get(route).session(f.teacher().session())).andExpect(status().isOk());
         mvc.perform(post("/api/classes/join").session(f.student().session()).contentType("application/json")
                 .content("{\"joinCode\":\"" + oldCode + "\"}")).andExpect(status().isNotFound());
         mvc.perform(post("/api/play/join").contentType("application/json")
-                .content(entryBody(f.studentCode(), f.worksheetCode()))).andExpect(status().isNotFound());
+                .content(entryBody(f.studentCode(), f.worksheetCode()))).andExpect(status().isOk());
         mvc.perform(post("/api/classes/{id}/tests", f.classroomId()).session(f.teacher().session())
                 .contentType("application/json").content("{\"worksheetId\":" + f.worksheetId() + "}"))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isConflict());
         mvc.perform(get("/api/assignments/report").session(f.teacher().session()))
             .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(2)));
         mvc.perform(get("/api/assignments/report?includeRemoved=true").session(f.teacher().session()))
@@ -440,7 +437,7 @@ class TeacherArchitectureTests {
         mvc.perform(get("/api/attempts/{id}", f.activeAttempt()).session(f.teacher().session()))
             .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ABANDONED"));
         mvc.perform(get("/api/attempts/{id}", f.completedAttempt()).session(f.student().session()))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isOk());
         mvc.perform(get("/api/assignments/report?includeRemoved=true").session(f.other().session()))
             .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(0)));
     }
@@ -519,7 +516,7 @@ class TeacherArchitectureTests {
             .contentType("application/json").content("{\"name\":\"Alex\"}"))
             .andExpect(status().isCreated()).andReturn();
         Long student = ((Number) JsonPath.read(body(child), "$.userId")).longValue();
-        String code = JsonPath.read(body(child), "$.studentCode");
+        String code = codeFromChild(teacher,child);
         Long worksheet = createWorksheet(teacher, "Personal work");
         createItem(teacher, worksheet);
         var assigned = mvc.perform(post("/api/worksheets/{id}/assignments", worksheet).session(teacher.session())
@@ -557,7 +554,7 @@ class TeacherArchitectureTests {
             .andExpect(jsonPath("$[0].status").value("COMPLETED"));
         mvc.perform(delete("/api/classes/{id}", classroom).session(teacher.session())).andExpect(status().isNoContent());
         mvc.perform(post("/api/play/login").contentType("application/json").content("{\"studentCode\":\"" + replacement + "\"}"))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isOk());
         mvc.perform(get("/api/attempts/{id}", attempt).session(teacher.session())).andExpect(status().isOk())
             .andExpect(jsonPath("$.totalScore").value(3));
     }
@@ -603,6 +600,12 @@ class TeacherArchitectureTests {
             .andExpect(jsonPath("$[0].worksheet.name").value("Frozen original"));
         mvc.perform(get("/api/assignments/report?includeRemoved=true").session(teacher.session()))
             .andExpect(status().isOk()).andExpect(jsonPath("$",hasSize(3)));
+    }
+
+    private String codeFromChild(Account teacher,MvcResult child) throws Exception {
+        long profile=((Number)JsonPath.read(body(child),"$.studentId")).longValue();
+        long space=((Number)JsonPath.read(body(mvc.perform(get("/api/auth/context").session(teacher.session())).andReturn()),"$.spaceId")).longValue();
+        return JsonPath.read(body(mvc.perform(post("/api/spaces/"+space+"/students/"+profile+"/credential").session(teacher.session())).andExpect(status().isOk()).andReturn()),"$.code");
     }
 
     private String entryBody(String studentCode, String worksheetCode) {

@@ -11,6 +11,9 @@ public class Classroom {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "space_id")
+    private Long spaceId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "teacher_id", nullable = false)
     private User teacher;
@@ -41,6 +44,9 @@ public class Classroom {
     }
 
     public Long getId() { return id; }
+    public Long getSpaceId() { return spaceId; }
+    public void setSpaceId(Long value) { spaceId = value; }
+    public void setTeacher(User value) { teacher = value; }
     public User getTeacher() { return teacher; }
     public String getName() { return name; }
     public String getJoinCode() { return joinCode; }

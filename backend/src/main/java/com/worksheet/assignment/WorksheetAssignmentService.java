@@ -28,6 +28,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional
 public class WorksheetAssignmentService {
+    private final com.worksheet.worksheet.revision.WorksheetRevisionRepository revisions;
+    private final com.worksheet.space.SpaceAccess spaces;
     private final WorksheetAssignmentRepository assignments;
     private final WorksheetRepository worksheets;
     private final ClassroomRepository classrooms;
@@ -41,7 +43,9 @@ public class WorksheetAssignmentService {
             ClassroomRepository classrooms, ClassroomMemberRepository members, WorksheetResultRepository results,
             WorksheetRevisionService revisionService,
             WorksheetRevisionResponseMapper revisionResponses,
-            WorksheetAttemptRepository attempts) {
+            WorksheetAttemptRepository attempts,com.worksheet.space.SpaceAccess spaces,com.worksheet.worksheet.revision.WorksheetRevisionRepository revisions) {
+        this.revisions=revisions;
+        this.spaces=spaces;
         this.assignments = assignments;
         this.worksheets = worksheets;
         this.classrooms = classrooms;
@@ -52,6 +56,14 @@ public class WorksheetAssignmentService {
         this.attempts = attempts;
     }
 
+    public record Preview(Long revisionId,WorksheetResponse worksheet) {}
+    public Preview preview(Long worksheetId,User actor) {
+        requireRole(actor,UserRole.TEACHER);
+        var worksheet=worksheets.findByIdAndUser_Id(worksheetId,actor.getId()).orElseThrow(this::assignmentNotFound);
+        var revision=revisionService.publish(worksheet);
+        return new Preview(revision.getId(),revisionResponses.toResponse(revision));
+    }
+
     @Transactional
     public List<WorksheetAssignmentResponse> create(Long worksheetId, User teacher, CreateAssignmentRequest request) {
         requireRole(teacher, UserRole.TEACHER);
@@ -59,17 +71,16 @@ public class WorksheetAssignmentService {
                 || (request.userIds() != null && request.classroomId() == null)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Provide exactly one of classroomId or userId.");
         }
+        if(request.title()!=null && request.title().strip().length()>150) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Delivery title must contain at most 150 characters.");
         Worksheet worksheet = worksheets.findByIdAndUser_Id(worksheetId, teacher.getId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Worksheet not found."));
-        WorksheetRevision revision = revisionService.publish(worksheet);
+        WorksheetRevision revision = request.revisionId()==null?revisionService.publish(worksheet):revisions.findById(request.revisionId()).filter(r -> r.getWorksheet().getId().equals(worksheetId)).orElseThrow(this::assignmentNotFound);
         UUID batchId = UUID.randomUUID();
 
         List<WorksheetAssignment> created;
         if(request.classroomId() != null) {
-            Classroom classroom = classrooms.findByIdAndTeacher_Id(request.classroomId(), teacher.getId())
-                .filter(value -> value.getArchivedAt() == null)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Class not found."));
-            List<ClassroomMember> recipients = members.findByClassroom_IdAndLeftAtIsNullOrderByJoinedAt(classroom.getId());
+            Classroom classroom = spaces.requireClass(request.classroomId(),teacher,true);
+            List<ClassroomMember> recipients = members.findByClassroom_IdAndLeftAtIsNullOrderByJoinedAt(classroom.getId()).stream().filter(m -> spaces.ensureStudent(classroom.getSpaceId(),m.getUser()).archivedAt==null).toList();
             if (request.userIds() != null) {
                 var selected = new java.util.HashSet<>(request.userIds());
                 if (selected.isEmpty() || selected.contains(null) || selected.size() != request.userIds().size()) {
@@ -93,28 +104,29 @@ public class WorksheetAssignmentService {
             }
             created = List.of(new WorksheetAssignment(batchId, revision, membership.getClassroom(), membership.getUser()));
         }
+        for(var item:created) { item.setSpaceId(item.getClassroom()==null?spaces.currentSpace(teacher):spaces.classSpace(item.getClassroom())); spaces.ensureStudent(item.getSpaceId(),item.getUser()); }
+        spaces.register(created.getFirst(),request.title());
         return assignments.saveAll(created).stream().map(this::toResponse).toList();
     }
 
     public List<WorksheetAssignmentResponse> getAll(User actor) {
-        List<WorksheetAssignment> found = actor.getRole() == UserRole.TEACHER
-            ? assignments.findByWorksheetRevision_Worksheet_User_IdOrderByAssignedAtDesc(actor.getId())
-            : assignments.findByUser_IdAndRevokedAtIsNullOrderByAssignedAtDesc(actor.getId());
-        return found.stream().filter(value -> value.getRemovedAt() == null)
+        Long spaceId=spaces.currentSpace(actor);
+        if(spaceId==null) return List.of();
+        return (actor.getRole()==UserRole.TEACHER ? assignments.findVisible(spaceId,actor.getId(),spaces.teacher(spaceId,actor).owner,null) : assignments.findBySpaceIdAndUser_IdOrderByAssignedAtDesc(spaceId,actor.getId())).stream()
+            .filter(a -> spaces.canRead(a,actor))
+            .filter(a -> a.getRevokedAt()==null || results.existsByAssignment_Id(a.getId()) || attempts.existsByAssignment_IdAndStatus(a.getId(),AttemptStatus.COMPLETED))
             .map(this::toResponse).toList();
     }
 
     public void removeGroup(Long classroomId, Long revisionId, User teacher) {
         requireRole(teacher, UserRole.TEACHER);
-        if (classroomId != null) classrooms.findByIdAndTeacher_Id(classroomId, teacher.getId())
-            .filter(value -> value.getArchivedAt() == null)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Class not found."));
+        if (classroomId != null) spaces.requireClass(classroomId,teacher,true);
         var group = classroomId == null
             ? assignments.findByClassroomIsNullAndWorksheetRevision_Id(revisionId)
             : assignments.findByClassroom_IdAndWorksheetRevision_Id(classroomId, revisionId);
-        var owned = group.stream().filter(value -> value.getTeacher().getId().equals(teacher.getId())).toList();
+        var owned = group.stream().filter(value -> spaces.canRead(value,teacher)).toList();
         if (owned.isEmpty()) throw assignmentNotFound();
-        owned.forEach(WorksheetAssignment::remove);
+        owned.forEach(value -> { if(value.getClassroom()!=null) spaces.requireClass(value.getClassroom().getId(),teacher,true); spaces.register(value,null).closedAt=java.time.Instant.now(); value.remove(); });
         for (var assignment : owned) {
             attempts.findByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.IN_PROGRESS)
                 .forEach(com.worksheet.attempt.WorksheetAttempt::abandon);
@@ -124,13 +136,19 @@ public class WorksheetAssignmentService {
     public void removeBatch(UUID batchId, User teacher) {
         requireRole(teacher, UserRole.TEACHER);
         var owned = assignments.findByBatchId(batchId).stream()
-            .filter(value -> value.getTeacher().getId().equals(teacher.getId())).toList();
+            .filter(value -> spaces.canRead(value,teacher)).toList();
         if (owned.isEmpty()) throw assignmentNotFound();
-        owned.forEach(WorksheetAssignment::remove);
+        owned.forEach(value -> { if(value.getClassroom()!=null) spaces.requireClass(value.getClassroom().getId(),teacher,true); spaces.register(value,null).closedAt=java.time.Instant.now(); value.remove(); });
         for (var assignment : owned) {
             attempts.findByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.IN_PROGRESS)
                 .forEach(com.worksheet.attempt.WorksheetAttempt::abandon);
         }
+    }
+
+    public List<WorksheetAssignmentResponse> delivery(UUID batchId,User actor) {
+        var found=assignments.findByBatchId(batchId).stream().filter(a -> spaces.canRead(a,actor)).toList();
+        if(found.isEmpty()) throw assignmentNotFound();
+        return found.stream().map(this::toResponse).toList();
     }
 
     public WorksheetAssignmentResponse getById(Long assignmentId, User actor) {
@@ -140,7 +158,7 @@ public class WorksheetAssignmentService {
     public WorksheetResultResponse createResult(Long assignmentId, User user, CreateWorksheetResultRequest request) {
         requireRole(user, UserRole.USER);
         WorksheetAssignment assignment = assignments.findById(assignmentId)
-            .filter(value -> value.getUser().getId().equals(user.getId()) && value.getRevokedAt() == null)
+            .filter(value -> spaces.canWrite(value,user))
             .orElseThrow(() -> assignmentNotFound());
         validateScores(request);
         WorksheetResult result = results.save(new WorksheetResult(
@@ -156,25 +174,22 @@ public class WorksheetAssignmentService {
 
     private WorksheetAssignment requireReadable(Long assignmentId, User actor) {
         WorksheetAssignment assignment = assignments.findById(assignmentId).orElseThrow(() -> assignmentNotFound());
-        boolean teacher = assignment.getTeacher().getId().equals(actor.getId());
-        boolean assignedUser = assignment.getUser().getId().equals(actor.getId()) && assignment.getRevokedAt() == null;
-        if(!teacher && !assignedUser) throw assignmentNotFound();
+        if(!spaces.canRead(assignment,actor)) throw assignmentNotFound();
         return assignment;
     }
 
     private WorksheetAssignmentResponse toResponse(WorksheetAssignment assignment) {
         WorksheetResponse worksheetResponse = revisionResponses.toResponse(assignment.getWorksheetRevision());
-        AssignmentStatus status = assignment.getRevokedAt() != null ? AssignmentStatus.REVOKED
-            : results.existsByAssignment_Id(assignment.getId())
+        AssignmentStatus status = results.existsByAssignment_Id(assignment.getId())
                 || attempts.existsByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.COMPLETED)
                 ? AssignmentStatus.COMPLETED
-                : attempts.existsByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.IN_PROGRESS)
+                : assignment.getRevokedAt()!=null ? AssignmentStatus.REVOKED : attempts.existsByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.IN_PROGRESS)
                     ? AssignmentStatus.IN_PROGRESS : AssignmentStatus.NOT_STARTED;
         Long classroomId = assignment.getClassroom() == null ? null : assignment.getClassroom().getId();
         return new WorksheetAssignmentResponse(assignment.getId(), assignment.getBatchId(), worksheetResponse,
             assignment.getTeacher().getId(), assignment.getTeacher().getName(), classroomId,
             assignment.getUser().getId(), assignment.getUser().getName(), assignment.getAssignedAt(),
-            assignment.getRevokedAt(), status);
+            assignment.getRevokedAt(), status,spaces.register(assignment,null).title,assignment.getClassroom()==null?null:assignment.getClassroom().getName());
     }
 
     private WorksheetResultResponse toResultResponse(WorksheetResult result) {

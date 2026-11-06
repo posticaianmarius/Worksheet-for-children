@@ -37,7 +37,7 @@ class PopulatedV23ArchiveUpgradeIT {
                   (id, worksheet_revision_id, assignment_id, status, total_score, max_score, started_at, completed_at)
                   VALUES (600, 400, 500, 'COMPLETED', 7, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """);
-            var latest = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()).load();
+            var latest = Flyway.configure().dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword()).target("24").load();
             assertEquals(1, latest.migrate().migrationsExecuted);
             assertEquals(0, latest.migrate().migrationsExecuted);
             latest.validate();

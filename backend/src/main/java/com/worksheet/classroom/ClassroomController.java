@@ -85,6 +85,9 @@ public class ClassroomController {
             service.startTest(classroomId, body.worksheetId(), sessions.requireRole(request, UserRole.TEACHER)));
     }
 
+    @GetMapping("/{classroomId}/members/{userId}")
+    public ClassroomMemberResponse student(@PathVariable Long classroomId,@PathVariable Long userId,HttpServletRequest request) { return service.student(classroomId,userId,sessions.requireRole(request,UserRole.TEACHER)); }
+
     public record StartTestRequest(Long worksheetId) {}
 
     @PostMapping("/{classroomId}/members/{userId}/code")

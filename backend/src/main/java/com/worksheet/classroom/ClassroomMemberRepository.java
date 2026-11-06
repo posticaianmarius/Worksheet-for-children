@@ -5,6 +5,9 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ClassroomMemberRepository extends JpaRepository<ClassroomMember, Long> {
+    long countByClassroom_IdAndLeftAtIsNull(Long classroomId);
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths={"user","classroom"})
+    List<ClassroomMember> findByClassroom_IdOrderByJoinedAt(Long classroomId);
     Optional<ClassroomMember> findByStudentCodeAndLeftAtIsNull(String studentCode);
     boolean existsByStudentCode(String studentCode);
     boolean existsByUser_IdAndStudentCodeIsNotNull(Long userId);

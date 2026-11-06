@@ -72,6 +72,7 @@ public class AuthSessionService {
         request.changeSessionId();
         request.getSession().setAttribute(USER_ID, user.id());
         request.getSession().removeAttribute(STUDENT_CODE);
+        request.getSession().removeAttribute("auth.spaceId");
         request.getSession().setMaxInactiveInterval(30 * 60);
         var authentication = UsernamePasswordAuthenticationToken.authenticated(
             user.id().toString(), null, List.of(new SimpleGrantedAuthority("ROLE_" + user.role().name())));

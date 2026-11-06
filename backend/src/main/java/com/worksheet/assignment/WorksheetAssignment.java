@@ -14,6 +14,9 @@ public class WorksheetAssignment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "space_id")
+    private Long spaceId;
+
     @Column(name = "batch_id", nullable = false)
     private UUID batchId;
 
@@ -50,6 +53,8 @@ public class WorksheetAssignment {
     }
 
     public Long getId() { return id; }
+    public Long getSpaceId() { return spaceId; }
+    public void setSpaceId(Long value) { spaceId = value; }
     public UUID getBatchId() { return batchId; }
     public WorksheetRevision getWorksheetRevision() { return worksheetRevision; }
     public User getTeacher() { return worksheetRevision.getWorksheet().getUser(); }

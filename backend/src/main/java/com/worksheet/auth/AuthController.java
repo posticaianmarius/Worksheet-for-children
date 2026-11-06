@@ -9,19 +9,24 @@ import static org.springframework.http.HttpStatus.*;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+    private final UserRepository users;
+    private final com.worksheet.space.SpaceTeamService team;
     private final AuthService auth;
     private final AuthSessionService sessions;
 
-    public AuthController(AuthService auth, AuthSessionService sessions) {
+    public AuthController(AuthService auth, AuthSessionService sessions,com.worksheet.space.SpaceTeamService team,UserRepository users) {
+        this.team=team; this.users=users;
         this.auth = auth;
         this.sessions = sessions;
     }
 
     @PostMapping(value = "/signup", consumes = "application/json")
     @ResponseStatus(CREATED)
+    @org.springframework.transaction.annotation.Transactional
     public UserResponse signup(@RequestBody Signup input, HttpServletRequest request) {
         UserResponse user = auth.signup(input.name(), input.email(), input.password(), input.role());
         sessions.startSession(request, user);
+        if(input.invitationToken()!=null) request.getSession().setAttribute("auth.spaceId",team.accept(input.invitationToken(),users.findById(user.id()).orElseThrow(com.worksheet.space.SpaceAccess::missing)));
         return user;
     }
 
@@ -50,7 +55,7 @@ public class AuthController {
         return new CsrfResponse(token.getHeaderName(), token.getParameterName(), token.getToken());
     }
 
-    public record Signup(String name, String email, String password, UserRole role) {}
+    public record Signup(String name, String email, String password, UserRole role,String invitationToken) {}
     public record Login(String email, String password) {}
     public record CsrfResponse(String headerName, String parameterName, String token) {}
 }

@@ -55,7 +55,7 @@ public class SecurityConfig {
         }
         http.authorizeHttpRequests(auth -> auth
             .requestMatchers("/", "/index.html", "/favicon.svg", "/assets/**", "/img/**", "/sounds/**", "/error").permitAll()
-            .requestMatchers(HttpMethod.GET, "/login", "/signup", "/home", "/home/*", "/account", "/sheets",
+            .requestMatchers(HttpMethod.GET, "/login", "/signup", "/invite", "/students", "/space", "/work/*", "/home", "/home/*", "/account", "/sheets",
                 "/teacher", "/teacher/*", "/kids", "/kids/*", "/classes", "/classes/*",
                 "/assignments", "/assignments/*", "/attempts/*").permitAll()
             .requestMatchers(HttpMethod.GET, "/classes/*/children/*", "/classes/*/children/*/tests/*", "/home/*/*").permitAll()
@@ -82,8 +82,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(allowedOrigin));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Content-Type", "X-XSRF-TOKEN", "X-Auth-Request", "X-Request-ID"));
-        configuration.setExposedHeaders(List.of("X-Request-ID"));
+        configuration.setAllowedHeaders(List.of("Content-Type", "X-XSRF-TOKEN", "X-Auth-Request", "X-Request-ID", "X-Space-Id"));
+        configuration.setExposedHeaders(List.of("X-Request-ID", "X-Space-Id"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

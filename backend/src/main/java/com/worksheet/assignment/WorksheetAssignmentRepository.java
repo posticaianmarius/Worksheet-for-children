@@ -6,6 +6,21 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface WorksheetAssignmentRepository extends JpaRepository<WorksheetAssignment, Long> {
+    @EntityGraph(attributePaths={"worksheetRevision","worksheetRevision.worksheet","worksheetRevision.worksheet.user","user","classroom","classroom.teacher"})
+    @org.springframework.data.jpa.repository.Query("""
+        select a from WorksheetAssignment a where a.spaceId=:spaceId
+        and (:classroomId is null or a.classroom.id=:classroomId)
+        and (:owner=true or (a.classroom is not null and exists
+            (select c.id from ClassTeacher c where c.classroomId=a.classroom.id and c.userId=:userId))
+            or (a.classroom is null and a.worksheetRevision.worksheet.user.id=:userId))
+        order by a.assignedAt desc
+        """)
+    List<WorksheetAssignment> findVisible(@org.springframework.data.repository.query.Param("spaceId") Long spaceId,
+        @org.springframework.data.repository.query.Param("userId") Long userId,
+        @org.springframework.data.repository.query.Param("owner") boolean owner,
+        @org.springframework.data.repository.query.Param("classroomId") Long classroomId);
+    List<WorksheetAssignment> findBySpaceIdOrderByAssignedAtDesc(Long spaceId);
+    List<WorksheetAssignment> findBySpaceIdAndUser_IdOrderByAssignedAtDesc(Long spaceId,Long userId);
     List<WorksheetAssignment> findByBatchId(java.util.UUID batchId);
     List<WorksheetAssignment> findByClassroom_Id(Long classroomId);
     List<WorksheetAssignment> findByClassroom_IdAndWorksheetRevision_Id(Long classroomId, Long revisionId);

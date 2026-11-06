@@ -21,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional
 public class WorksheetShareService {
+    private final com.worksheet.space.SpaceAccess spaces;
     private final WorksheetRepository worksheets;
     private final WorksheetAssignmentRepository assignments;
     private final WorksheetRevisionService revisions;
@@ -34,7 +35,8 @@ public class WorksheetShareService {
                                  WorksheetRevisionService revisions,
                                  WorksheetRevisionItemRepository revisionItems,
                                  WorksheetRevisionResponseMapper responseMapper,
-                                 JoinCodeGenerator codes, ClassroomMemberRepository members) {
+                                 JoinCodeGenerator codes, ClassroomMemberRepository members,com.worksheet.space.SpaceAccess spaces) {
+        this.spaces=spaces;
         this.worksheets = worksheets;
         this.assignments = assignments;
         this.revisions = revisions;
@@ -85,49 +87,43 @@ public class WorksheetShareService {
         return code;
     }
 
-    private JoinWorksheetResponse join(String rawCode, User user, ClassroomMember member) {
-        String code = normalize(rawCode);
-        Worksheet worksheet = worksheets.findByShareCode(code)
-            .orElseThrow(this::codeNotFound);
-        if (member == null && members.existsByUser_IdAndStudentCodeIsNotNull(user.getId())) {
-            member = members.findFirstByUser_IdAndClassroom_Teacher_IdAndStudentCodeIsNotNullAndLeftAtIsNull(
-                user.getId(), worksheet.getUser().getId()).orElseThrow(this::codeNotFound);
+    private JoinWorksheetResponse join(String rawCode,User user,ClassroomMember member) {
+        return joinInSpace(rawCode,user,member==null?spaces.currentSpace(user):spaces.classSpace(member.getClassroom()));
+    }
+    public record Choice(Long assignmentId,UUID batchId,String classroomName,String title) {}
+    public java.util.List<Choice> choices(String rawCode,User user) {
+        Long spaceId=spaces.currentSpace(user);
+        var worksheet=worksheets.findByShareCode(normalize(rawCode)).orElseThrow(this::codeNotFound);
+        if(worksheet.getShareRevision()==null) return java.util.List.of();
+        return assignments.findBySpaceIdAndUser_IdOrderByAssignedAtDesc(spaceId,user.getId()).stream()
+            .filter(a -> a.getWorksheetRevision().getId().equals(worksheet.getShareRevision().getId()) && spaces.canWrite(a,user))
+            .map(a -> new Choice(a.getId(),a.getBatchId(),a.getClassroom()==null?null:a.getClassroom().getName(),spaces.register(a,null).title)).toList();
+    }
+    public JoinWorksheetResponse joinInSpace(String rawCode,User user,Long spaceId) {
+        var worksheet=worksheets.findByShareCode(normalize(rawCode)).orElseThrow(this::codeNotFound);
+        var revision=worksheet.getShareRevision();
+        if(revision==null) { revision=publishNonEmpty(worksheet); worksheet.share(worksheet.getShareCode(),revision); }
+        final var pinned=revision;
+        var candidates=spaceId==null?java.util.List.<WorksheetAssignment>of():assignments.findBySpaceIdAndUser_IdOrderByAssignedAtDesc(spaceId,user.getId()).stream()
+            .filter(a -> a.getWorksheetRevision().getId().equals(pinned.getId()) && a.getRevokedAt()==null
+                && (a.getClassroom()==null || a.getClassroom().getArchivedAt()==null)).toList();
+        if(candidates.size()>1) throw new ResponseStatusException(HttpStatus.CONFLICT,"Choose the class and assignment you want to open.");
+        if(candidates.size()==1) return JoinWorksheetResponse.from(responseMapper.toResponse(pinned),candidates.getFirst().getId());
+        // Historic general share codes can create direct work only inside the author's personal space.
+        Long sourceSpace=spaces.personal(worksheet.getUser()).id;
+        if(spaceId!=null && !spaceId.equals(sourceSpace)) throw codeNotFound();
+        var profile=spaces.ensureStudent(sourceSpace,user);
+        if(profile.archivedAt!=null || assignments.existsByWorksheetRevision_IdAndUser_IdAndRemovedAtIsNotNull(pinned.getId(),user.getId())) throw codeNotFound();
+        if("!".equals(user.getPasswordHash())) {
+            boolean eligible=members.findByUser_IdAndLeftAtIsNullOrderByJoinedAtDesc(user.getId()).stream()
+                .anyMatch(m -> sourceSpace.equals(spaces.classSpace(m.getClassroom())) && m.getClassroom().getArchivedAt()==null);
+            if(!eligible) throw codeNotFound();
+            var classIds=members.findByUser_IdAndLeftAtIsNullOrderByJoinedAtDesc(user.getId()).stream().map(m -> m.getClassroom().getId()).collect(java.util.stream.Collectors.toSet());
+            if(assignments.findBySpaceIdOrderByAssignedAtDesc(sourceSpace).stream().anyMatch(a -> a.getWorksheetRevision().getId().equals(pinned.getId()) && a.getClassroom()!=null && classIds.contains(a.getClassroom().getId()))) throw codeNotFound();
         }
-        if (member != null && (member.getLeftAt() != null || member.getClassroom().getArchivedAt() != null
-            || !worksheet.getUser().getId().equals(member.getClassroom().getTeacher().getId()))) {
-            throw codeNotFound();
-        }
-
-        // V18 codes predate revision pinning. Pin them once on first use.
-        WorksheetRevision revision = worksheet.getShareRevision();
-        if (revision == null) {
-            revision = publishNonEmpty(worksheet);
-            worksheet.share(code, revision);
-            worksheets.save(worksheet);
-        }
-
-        WorksheetRevision pinnedRevision = revision;
-        ClassroomMember recipient = member;
-        var existing = recipient == null
-            ? assignments.findFirstByWorksheetRevision_IdAndUser_IdAndRevokedAtIsNullOrderByAssignedAtDesc(
-                pinnedRevision.getId(), user.getId())
-            : assignments.findFirstByWorksheetRevision_IdAndUser_IdAndClassroom_IdAndRevokedAtIsNullOrderByAssignedAtDesc(
-                pinnedRevision.getId(), user.getId(), recipient.getClassroom().getId());
-        if (existing.isEmpty()) {
-            if (assignments.existsByWorksheetRevision_IdAndUser_IdAndRemovedAtIsNotNull(pinnedRevision.getId(), user.getId())) {
-                throw codeNotFound();
-            }
-            if (recipient != null) {
-                var group = assignments.findByClassroom_IdAndWorksheetRevision_Id(recipient.getClassroom().getId(), pinnedRevision.getId());
-                if (!group.isEmpty() && group.stream().allMatch(value -> value.getRemovedAt() != null)) throw codeNotFound();
-            }
-        }
-        WorksheetAssignment assignment = existing
-            .orElseGet(() -> assignments.save(
-                new WorksheetAssignment(UUID.randomUUID(), pinnedRevision,
-                    recipient == null ? null : recipient.getClassroom(), user)));
-
-        return JoinWorksheetResponse.from(responseMapper.toResponse(pinnedRevision), assignment.getId());
+        var assignment=new WorksheetAssignment(UUID.randomUUID(),pinned,null,user); assignment.setSpaceId(sourceSpace);
+        spaces.register(assignment,null); assignments.save(assignment);
+        return JoinWorksheetResponse.from(responseMapper.toResponse(pinned),assignment.getId());
     }
 
     private WorksheetRevision publishNonEmpty(Worksheet worksheet) {

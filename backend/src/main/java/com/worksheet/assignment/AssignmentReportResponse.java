@@ -22,5 +22,5 @@ public record AssignmentReportResponse(
     Integer totalScore,
     Integer maxScore,
     Instant completedAt,
-    java.util.UUID batchId
+    java.util.UUID batchId, String deliveryTitle
 ) {}
