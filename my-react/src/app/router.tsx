@@ -1,4 +1,5 @@
 import { Loading } from "../shared/ui";
+import StudentLayout from "../features/student/StudentLayout";
 import { createBrowserRouter } from "react-router-dom";
 import {
   AttemptLayout,
@@ -15,6 +16,32 @@ export const router = createBrowserRouter([
     HydrateFallback: Loading,
     ErrorBoundary: RouteError,
     children: [
+      {
+        Component: StudentLayout,
+        children: [
+          {
+            path: "student",
+            lazy: async () => ({
+              Component: (await import("../features/student/StudentWork"))
+                .default,
+            }),
+          },
+          {
+            path: "student/finished",
+            lazy: async () => ({
+              Component: (await import("../features/student/StudentWork"))
+                .FinishedWork,
+            }),
+          },
+          {
+            path: "student/settings",
+            lazy: async () => ({
+              Component: (await import("../features/student/StudentWork"))
+                .StudentSettings,
+            }),
+          },
+        ],
+      },
       {
         Component: PublicLayout,
         children: [
@@ -93,6 +120,20 @@ export const router = createBrowserRouter([
       {
         Component: TeacherLayout,
         children: [
+          {
+            path: "results",
+            lazy: async () => ({
+              Component: (await import("../features/assignments/Results"))
+                .default,
+            }),
+          },
+          {
+            path: "classes/:id/access-cards",
+            lazy: async () => ({
+              Component: (await import("../features/classrooms/AccessCards"))
+                .default,
+            }),
+          },
           {
             path: "sheets",
             lazy: async () => ({

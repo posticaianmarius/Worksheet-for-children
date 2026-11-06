@@ -54,14 +54,15 @@ public class SecurityConfig {
             http.csrf(csrf -> csrf.disable());
         }
         http.authorizeHttpRequests(auth -> auth
-            .requestMatchers("/", "/index.html", "/assets/**", "/img/**", "/sounds/**", "/error").permitAll()
+            .requestMatchers("/", "/index.html", "/favicon.svg", "/assets/**", "/img/**", "/sounds/**", "/error").permitAll()
             .requestMatchers(HttpMethod.GET, "/login", "/signup", "/home", "/home/*", "/account", "/sheets",
                 "/teacher", "/teacher/*", "/kids", "/kids/*", "/classes", "/classes/*",
                 "/assignments", "/assignments/*", "/attempts/*").permitAll()
             .requestMatchers(HttpMethod.GET, "/classes/*/children/*", "/classes/*/children/*/tests/*", "/home/*/*").permitAll()
             .requestMatchers(HttpMethod.GET, "/assignments/classes/*", "/assignments/classes/*/worksheets/*").permitAll()
             .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/csrf").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/play/join").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/play/join", "/api/play/login").permitAll()
+            .requestMatchers(HttpMethod.GET, "/student", "/student/**", "/results", "/classes/*/access-cards").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/minigames", "/api/minigames/*").permitAll()
             .requestMatchers("/api/minigame1/**", "/api/count-match/**").permitAll()
             .requestMatchers("/api/admin/**").hasRole("ADMIN")

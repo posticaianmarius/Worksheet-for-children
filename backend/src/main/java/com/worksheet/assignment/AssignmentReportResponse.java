@@ -21,5 +21,6 @@ public record AssignmentReportResponse(
     Long attemptId,
     Integer totalScore,
     Integer maxScore,
-    Instant completedAt
+    Instant completedAt,
+    java.util.UUID batchId
 ) {}

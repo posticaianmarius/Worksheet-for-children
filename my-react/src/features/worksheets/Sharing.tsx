@@ -137,39 +137,52 @@ function ShareContent({
 export function AssignDialog({
   worksheetId,
   onClose,
+  classroomId,
 }: {
   worksheetId: number | null;
   onClose: () => void;
+  classroomId?: string;
 }) {
   return worksheetId !== null ? (
-    <AssignContent worksheetId={worksheetId} onClose={onClose} />
+    <AssignContent
+      worksheetId={worksheetId}
+      classroomId={classroomId}
+      onClose={onClose}
+    />
   ) : null;
 }
 function AssignContent({
   worksheetId,
   onClose,
+  classroomId,
 }: {
   worksheetId: number;
   onClose: () => void;
+  classroomId?: string;
 }) {
   const { t } = useLanguage(),
     classes = useResource(["classes"], api.classes);
-  const [classId, setClassId] = useState(""),
+  const [classId, setClassId] = useState(classroomId ?? ""),
     [student, setStudent] = useState("all"),
+    [selected, setSelected] = useState<number[]>([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null);
   const members = useResource(["members", classId], () =>
     classId ? api.members(classId) : Promise.resolve([]),
   );
   async function assign() {
-    if (!classId || busy) return;
+    if (!classId || busy || (student === "selected" && !selected.length))
+      return;
     setBusy(true);
     try {
       await api.assign(
         worksheetId,
         student === "all"
           ? { classroomId: Number(classId) }
-          : { userId: Number(student) },
+          : {
+              classroomId: Number(classId),
+              userIds: student === "selected" ? selected : [Number(student)],
+            },
       );
       onClose();
     } catch (e) {
@@ -195,6 +208,7 @@ function AssignContent({
               onChange={(e) => {
                 setClassId(e.target.value);
                 setStudent("all");
+                setSelected([]);
               }}
             >
               <option value="">—</option>
@@ -212,15 +226,40 @@ function AssignContent({
               onChange={(e) => setStudent(e.target.value)}
             >
               <option value="all">{t("Whole class")}</option>
+              <option value="selected">{t("assignment.selected")}</option>
               {members.data?.map((member) => (
                 <option key={member.userId} value={member.userId}>
                   {member.name}
                 </option>
               ))}
             </select>
+            {student === "selected" && (
+              <fieldset className="recipient-selection">
+                <legend>{t("assignment.selected")}</legend>
+                {members.error && <ErrorNotice error={members.error} />}
+                {members.data?.map((member) => (
+                  <label className="check-field" key={member.userId}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(member.userId)}
+                      onChange={(event) =>
+                        setSelected((current) =>
+                          event.target.checked
+                            ? [...current, member.userId]
+                            : current.filter((id) => id !== member.userId),
+                        )
+                      }
+                    />
+                    {member.name}
+                  </label>
+                ))}
+              </fieldset>
+            )}
             <Button
               variant="primary"
-              disabled={!classId}
+              disabled={
+                !classId || (student === "selected" && !selected.length)
+              }
               busy={busy}
               onClick={() => void assign()}
             >

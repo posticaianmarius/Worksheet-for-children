@@ -79,6 +79,27 @@ personal code and revokes their class assignments without deleting history.
 
 The old `worksheet_result` and `mini_game_result` tables/routes remain as deprecated compatibility APIs. New work uses `worksheet_attempt` and `worksheet_attempt_item_result`.
 
+## Teacher and student workspaces
+
+`POST /api/play/login` accepts `{ "studentCode": "..." }` and establishes the normal
+child session after validating an active membership and classroom. It does not
+create a child or assignment. Personal codes are credentials: unsuccessful public
+code attempts are limited per remote address, and code sessions are checked against
+the active membership on authenticated API requests, including `/api/auth/me`.
+`POST /api/classes/{classId}/members/{userId}/code/rotate` replaces a code and
+invalidates sessions using the previous credential without changing the identity
+or its history. Printable access cards are a teacher-owned frontend view.
+
+Assignment creation additionally accepts `{ "classroomId": 1, "userIds": [2, 3] }`.
+All selected users must be distinct, active members of that exact owned class.
+The original whole-class and single-user payloads remain supported. Each creation
+retains its existing unique batch UUID. Reports expose that `batchId`; the new
+teacher workspace groups by delivery rather than combining repeated assignments
+of the same worksheet version. `DELETE /api/assignments/batches/{batchId}` closes
+only that teacher-owned delivery. Legacy revision-group endpoints are unchanged.
+Student assignment responses now include `IN_PROGRESS` when an unfinished attempt
+exists. Completed versions and results remain immutable.
+
 ## Attempt lifecycle
 
 ```text
@@ -107,7 +128,8 @@ The client reports each dynamic game's item score because the backend cannot rep
 
 | Capability | USER | TEACHER | ADMIN |
 | --- | --- | --- | --- |
-| Signup/login and personal worksheets | Yes | Yes | Yes |
+| Sign in | Personal code or existing credentials | Email/password | Email/password |
+| Create and edit worksheets | No | Yes | Yes |
 | Create/join classroom | Join | Create/manage | No special classroom bypass |
 | Assign an owned worksheet | No | Yes | No implicit teacher bypass |
 | Play a received assignment | Yes | No | No |

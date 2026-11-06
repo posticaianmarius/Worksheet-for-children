@@ -5,7 +5,8 @@ test("real backend: all six editors persist non-default settings and a class com
   browser,
   page,
 }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(180_000);
+  page.setDefaultTimeout(20_000);
   await page.addInitScript(() =>
     localStorage.setItem("worksheet-language", "en"),
   );
@@ -23,10 +24,12 @@ test("real backend: all six editors persist non-default settings and a class com
   await page
     .getByRole("button", { name: "Create account", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/sheets$/);
+  await expect(page).toHaveURL(/\/home$/);
+  await page.goto("/sheets");
   async function create(name) {
     await page
       .getByRole("button", { name: "New worksheet", exact: true })
+      .first()
       .click();
     await page.getByLabel("Worksheet name", { exact: true }).fill(name);
     await page
@@ -150,16 +153,19 @@ test("real backend: all six editors persist non-default settings and a class com
   const studentCode = await page
     .locator(".student-access-code code")
     .innerText();
+  const classroomPath = new URL(page.url()).pathname;
+  await page.getByRole("button", { name: "Add student", exact: true }).click();
+  await page.getByLabel("Student name", { exact: true }).fill("Maria");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.getByRole("button", { name: "Start a test", exact: true }).click();
   await page
     .getByRole("button", { name: "One little discovery", exact: true })
     .click();
-  const worksheetCode = await page
-    .locator(".test-code-banner strong")
-    .innerText();
+  await expect(page.locator(".test-code-banner strong")).not.toBeEmpty();
 
   const child = await browser.newContext();
   const childPage = await child.newPage();
+  childPage.setDefaultTimeout(20_000);
   try {
     await childPage.addInitScript(() =>
       localStorage.setItem("worksheet-language", "en"),
@@ -168,12 +174,25 @@ test("real backend: all six editors persist non-default settings and a class com
     await childPage
       .getByLabel("Student code", { exact: true })
       .fill(studentCode);
+
     await childPage
-      .getByLabel("Worksheet code", { exact: true })
-      .fill(worksheetCode);
-    await childPage
-      .getByRole("button", { name: "Check and start", exact: true })
+      .getByRole("button", { name: "Continue", exact: true })
       .click();
+    await expect(childPage).toHaveURL(/\/student$/);
+    expect(
+      (await childPage.request.get("/api/assignments/report")).status(),
+    ).toBe(403);
+    await childPage.screenshot({
+      path: test.info().outputPath("student-work.png"),
+      fullPage: true,
+    });
+    await childPage.getByRole("button", { name: "Start", exact: true }).click();
+    await childPage.getByRole("link", { name: "Back", exact: true }).click();
+    await childPage
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(childPage).toHaveURL(/\/attempts\/\d+$/);
+    await childPage.reload();
     await childPage.getByRole("button", { name: "Odd", exact: true }).click();
     await childPage
       .getByRole("button", { name: "Finish worksheet", exact: true })
@@ -195,4 +214,115 @@ test("real backend: all six editors persist non-default settings and a class com
   await expect(page.getByRole("row", { name: /Activity 1/ })).toContainText(
     "1 / 1",
   );
+  const savedAttempt = new URL(page.url()).pathname.split("/").at(-1);
+  await page.goto(classroomPath);
+  const alex = page
+    .getByRole("row")
+    .filter({ has: page.getByRole("link", { name: "Alex", exact: true }) });
+  await alex.getByRole("button", { name: "Replace code", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Replace code", exact: true })
+    .click();
+  await expect(alex.locator(".student-access-code code")).not.toHaveText(
+    studentCode,
+  );
+  const replacement = await alex
+    .locator(".student-access-code code")
+    .innerText();
+  const checkContext = await browser.newContext();
+  try {
+    const checkPage = await checkContext.newPage();
+    await checkPage.addInitScript(() =>
+      localStorage.setItem("worksheet-language", "en"),
+    );
+    await checkPage.goto(new URL("/", page.url()).href);
+    await checkPage
+      .getByLabel("Student code", { exact: true })
+      .fill(studentCode);
+    await checkPage
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(checkPage.getByRole("alert")).toContainText(
+      "Student code not found",
+    );
+    await checkPage
+      .getByLabel("Student code", { exact: true })
+      .fill(replacement);
+    await checkPage
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(checkPage).toHaveURL(/\/student$/);
+    await checkPage
+      .getByRole("link", { name: "Finished work", exact: true })
+      .click();
+    await expect(
+      checkPage.getByRole("heading", {
+        name: "One little discovery",
+        exact: true,
+      }),
+    ).toBeVisible();
+  } finally {
+    await checkContext.close();
+  }
+  await page
+    .getByRole("link", { name: "Student access cards", exact: true })
+    .click();
+  await expect(page.locator(".access-card")).toHaveCount(2);
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".sidebar")).not.toBeVisible();
+  await page.screenshot({
+    path: test.info().outputPath("access-cards.png"),
+    fullPage: true,
+  });
+  await page.emulateMedia({ media: "screen" });
+  await page.goto(classroomPath + "?tab=assignments");
+  await expect(page.locator(".delivery-card")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "Assign worksheet", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "One little discovery", exact: true })
+    .click();
+  await page.getByLabel("Student", { exact: true }).selectOption("selected");
+  await page.getByLabel("Maria", { exact: true }).check();
+  await page.getByRole("button", { name: "Assign", exact: true }).click();
+  await expect(page.locator(".delivery-card")).toHaveCount(2);
+  await page.screenshot({
+    path: test.info().outputPath("teacher-assignments.png"),
+    fullPage: true,
+  });
+  const delivered = await page.request.get("/api/assignments");
+  const batches = await delivered.json();
+  expect(new Set(batches.map((item) => item.batchId)).size).toBe(2);
+  const second = batches.find(
+    (item) =>
+      item.userName === "Maria" &&
+      !batches.some(
+        (other) => other.batchId === item.batchId && other.userName === "Alex",
+      ),
+  );
+  expect(second).toBeTruthy();
+  const wholeClass = page
+    .locator(".delivery-card")
+    .filter({ hasText: "1 / 2" });
+  await wholeClass
+    .getByRole("button", { name: "Close assignment", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close assignment", exact: true })
+    .click();
+  await expect(page.locator(".delivery-card")).toHaveCount(1);
+  const preserved = await page.request.get("/api/attempts/" + savedAttempt);
+  expect((await preserved.json()).totalScore).toBe(1);
+  await page.goto("/results");
+  await expect(
+    page.getByRole("link", { name: "View Alex's result", exact: true }),
+  ).toHaveText("1 / 1");
+  await page.screenshot({
+    path: test.info().outputPath("teacher-results.png"),
+    fullPage: true,
+  });
 });

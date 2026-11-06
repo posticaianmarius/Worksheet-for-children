@@ -42,7 +42,7 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
       (!!attempt.assignmentId && user?.role !== "USER"),
     back =
       user?.role === "USER"
-        ? "/"
+        ? "/student"
         : attempt.assignmentId
           ? "/assignments/" + attempt.assignmentId
           : "/kids/" + attempt.worksheetId;

@@ -1,10 +1,18 @@
 import "./layout.css";
+import { Brand } from "../shared/Brand";
+import { LanguageMenu } from "../shared/LanguageMenu";
+import { RequireSession } from "./guards";
+import {
+  StudentHeader,
+  StudentWorkspace,
+} from "../features/student/StudentLayout";
 import { useEffect, useState } from "react";
 import {
   BookOpen,
   House,
   Users,
   ClipboardList,
+  ChartNoAxesCombined,
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
@@ -15,21 +23,13 @@ import {
 } from "lucide-react";
 import {
   Link,
-  Navigate,
   NavLink,
   Outlet,
   ScrollRestoration,
   useLocation,
 } from "react-router-dom";
 import { canTeach } from "../shared/api";
-import {
-  Button,
-  Dropdown,
-  ErrorNotice,
-  Loading,
-  MenuAction,
-  Modal,
-} from "../shared/ui";
+import { Button, ErrorNotice, Modal } from "../shared/ui";
 import {
   readStorage,
   useLanguage,
@@ -37,28 +37,6 @@ import {
   useSession,
   writeStorage,
 } from "./state";
-import type { ReactNode } from "react";
-export function LanguageMenu() {
-  const { language, setLanguage, t } = useLanguage();
-  return (
-    <Dropdown ariaLabel={t("Language")} label={language === "ro" ? "RO" : "EN"}>
-      <MenuAction onClick={() => setLanguage("en")}>English</MenuAction>
-      <MenuAction onClick={() => setLanguage("ro")}>Română</MenuAction>
-    </Dropdown>
-  );
-}
-export function Brand() {
-  return (
-    <span className="brand">
-      <span className="brand-mark">
-        <BookOpen size={22} />
-      </span>
-      <span className="brand-name">
-        PlaySheets<span className="brand-dot">.</span>
-      </span>
-    </span>
-  );
-}
 export function PublicHeader({ minimal = false }: { minimal?: boolean }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null);
@@ -128,36 +106,28 @@ export function PublicLayout() {
     document.title =
       t(
         pathname === "/login"
-          ? "Log in"
+          ? "auth.login"
           : pathname === "/signup"
             ? "Account for teachers"
-            : "Learning through play",
+            : "student.access",
       ) + " · PlaySheets";
   }, [pathname, t]);
+  if (pathname === "/" || pathname === "/login" || pathname === "/signup") {
+    return (
+      <div className="auth-page">
+        <header className="auth-toolbar">
+          <LanguageMenu />
+        </header>
+        <Outlet />
+      </div>
+    );
+  }
   return (
     <>
       <PublicHeader minimal />
       <Outlet />
     </>
   );
-}
-export function RequireSession({
-  children,
-  teacher = false,
-  entry = "/login",
-}: {
-  children: ReactNode;
-  teacher?: boolean;
-  entry?: string;
-}) {
-  const { user, loading, error, refresh } = useSession(),
-    location = useLocation();
-  if (loading) return <Loading />;
-  if (error) return <ErrorNotice error={error} retry={() => void refresh()} />;
-  if (!user)
-    return <Navigate to={entry} state={{ from: location.pathname }} replace />;
-  if (teacher && !canTeach(user)) return <Navigate to="/" replace />;
-  return children;
 }
 export function Workspace() {
   const { user } = useSession(),
@@ -176,6 +146,9 @@ export function Workspace() {
       : []),
     { to: "/classes", label: "Classes", Icon: Users },
     { to: "/assignments", label: "Assignments", Icon: ClipboardList },
+    ...(teacher
+      ? [{ to: "/results", label: "Results", Icon: ChartNoAxesCombined }]
+      : []),
   ];
   const active =
     links.find((link) => pathname.startsWith(link.to))?.label ??
@@ -297,9 +270,13 @@ export function TeacherLayout() {
 export function SessionLayout() {
   return (
     <RequireSession>
-      <Workspace />
+      <SessionWorkspace />
     </RequireSession>
   );
+}
+function SessionWorkspace() {
+  const { user } = useSession();
+  return canTeach(user) ? <Workspace /> : <StudentWorkspace />;
 }
 export function AttemptLayout() {
   const { user } = useSession();
@@ -309,7 +286,7 @@ export function AttemptLayout() {
         <Workspace />
       ) : (
         <>
-          <PublicHeader />
+          <StudentHeader />
           <div className="learner-main">
             <Outlet />
           </div>

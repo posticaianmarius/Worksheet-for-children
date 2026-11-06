@@ -21,7 +21,7 @@ import {
 } from "../../shared/ui";
 import { Resource, useResource } from "../../shared/resource";
 import type { Assignment, Worksheet } from "../../shared/types";
-const Reports = lazy(() => import("./Reports"));
+const Reports = lazy(() => import("./TeacherAssignments"));
 export default function Assignments() {
   const { user } = useSession();
   return canTeach(user) ? (

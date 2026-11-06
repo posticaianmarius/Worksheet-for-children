@@ -7,20 +7,27 @@ import {
   Plus,
   ArrowUpRight,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useLanguage, usePreferences, useSession } from "../../app/state";
 import { api, canTeach } from "../../shared/api";
 import { Page, Button, Empty, ErrorNotice, Status } from "../../shared/ui";
 import { Resource, useResource } from "../../shared/resource";
 import { ShareDialog } from "../worksheets/Sharing";
 export default function Dashboard() {
+  const { user } = useSession();
+  return canTeach(user) ? (
+    <TeacherDashboard />
+  ) : (
+    <Navigate to="/student" replace />
+  );
+}
+function TeacherDashboard() {
   const { user } = useSession(),
     { t } = useLanguage();
-  const teacher = canTeach(user);
   const [share, setShare] = useState<number | null>(null);
   const query = useResource(["dashboard"], async () => {
     const [worksheets, classes, assignments] = await Promise.all([
-      teacher ? api.worksheets() : Promise.resolve([]),
+      api.worksheets(),
       api.classes(),
       api.assignments(),
     ]);
@@ -32,17 +39,18 @@ export default function Dashboard() {
       title={t("Welcome") + ", " + user?.name + "!"}
       subtitle={t("dashboard.subtitle")}
       actions={
-        teacher && (
-          <Link className="button button--primary" to="/sheets">
-            <Plus size={18} />
-            {t("Create and edit activities")}
-          </Link>
-        )
+        <Link className="button button--primary" to="/sheets">
+          <Plus size={18} />
+          {t("Create and edit activities")}
+        </Link>
       }
     >
       <Resource query={query}>
         {({ worksheets, classes, assignments }) => (
           <>
+            <TeacherGuide
+              counts={[classes.length, worksheets.length, assignments.length]}
+            />
             <div className="stat-grid">
               {[
                 {
@@ -59,100 +67,75 @@ export default function Dashboard() {
                 },
                 {
                   label: "Assignments",
-                  count: assignments.length,
+                  count: new Set(
+                    assignments.map((item) => item.batchId ?? item.id),
+                  ).size,
                   to: "/assignments",
                   Icon: ClipboardList,
                 },
-              ]
-                .filter((item) => teacher || item.to !== "/sheets")
-                .map(({ label, count, to, Icon }) => (
-                  <Link className="stat-card" to={to} key={to}>
-                    <Icon size={20} />
-                    <span>{t(label)}</span>
-                    <strong>{count}</strong>
-                    <ArrowUpRight size={18} />
-                  </Link>
-                ))}
+              ].map(({ label, count, to, Icon }) => (
+                <Link className="stat-card" to={to} key={to}>
+                  <Icon size={20} />
+                  <span>{t(label)}</span>
+                  <strong>{count}</strong>
+                  <ArrowUpRight size={18} />
+                </Link>
+              ))}
             </div>
             <section className="panel">
               <div className="section-heading">
-                <h2>
-                  {t(teacher ? "Recent worksheets" : "Continue learning")}
-                </h2>
-                <Link
-                  className="text-link"
-                  to={teacher ? "/sheets" : "/assignments"}
-                >
-                  {t(teacher ? "View all worksheets" : "Assignments")}
+                <h2>{t("Recent worksheets")}</h2>
+                <Link className="text-link" to="/sheets">
+                  {t("View all worksheets")}
                   <ArrowUpRight size={14} />
                 </Link>
               </div>
-              {teacher ? (
-                worksheets.length ? (
-                  <div className="recent-grid">
-                    {[...worksheets]
-                      .sort(
-                        (a, b) =>
-                          Date.parse(b.updatedAt ?? "") -
-                          Date.parse(a.updatedAt ?? ""),
-                      )
-                      .slice(0, 4)
-                      .map((sheet) => (
-                        <article className="recent-card" key={sheet.id}>
-                          <span className="feature-icon">
-                            <BookOpen size={22} />
+              {worksheets.length ? (
+                <div className="recent-grid">
+                  {[...worksheets]
+                    .sort(
+                      (a, b) =>
+                        Date.parse(b.updatedAt ?? "") -
+                        Date.parse(a.updatedAt ?? ""),
+                    )
+                    .slice(0, 4)
+                    .map((sheet) => (
+                      <article className="recent-card" key={sheet.id}>
+                        <span className="feature-icon">
+                          <BookOpen size={22} />
+                        </span>
+                        <Link to={"/teacher/" + sheet.id}>
+                          <h3>{sheet.name}</h3>
+                          <span className="muted">
+                            {t(
+                              sheet.items.length === 1
+                                ? "{count} activity"
+                                : "{count} activities",
+                              { count: sheet.items.length },
+                            )}
                           </span>
-                          <Link to={"/teacher/" + sheet.id}>
-                            <h3>{sheet.name}</h3>
-                            <span className="muted">
-                              {t(
-                                sheet.items?.length === 1
-                                  ? "{count} activity"
-                                  : "{count} activities",
-                                { count: sheet.items?.length ?? 0 },
-                              )}
-                            </span>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            aria-label={
-                              t("Share worksheet") + ": " + sheet.name
-                            }
-                            disabled={!sheet.items?.length}
-                            onClick={() => setShare(sheet.id)}
-                          >
-                            {t("Share worksheet")}
-                          </Button>
-                        </article>
-                      ))}
-                  </div>
-                ) : (
-                  <Empty
-                    description={t(
-                      "No worksheets yet. Create your first worksheet to begin.",
-                    )}
-                  >
-                    <Link className="button button--primary" to="/sheets">
-                      {t("Open worksheets")}
-                    </Link>
-                  </Empty>
-                )
-              ) : (
-                <div className="list">
-                  {assignments.map((item) => (
-                    <Link
-                      className="list-row"
-                      to={"/assignments/" + item.id}
-                      key={item.id}
-                    >
-                      <strong>{item.worksheet.name}</strong>
-                      <Status value={item.status} />
-                    </Link>
-                  ))}
-                  {!assignments.length && (
-                    <Empty description={t("No assignments yet.")} />
-                  )}
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          aria-label={t("Share worksheet") + ": " + sheet.name}
+                          disabled={!sheet.items.length}
+                          onClick={() => setShare(sheet.id)}
+                        >
+                          {t("Share worksheet")}
+                        </Button>
+                      </article>
+                    ))}
                 </div>
+              ) : (
+                <Empty
+                  description={t(
+                    "No worksheets yet. Create your first worksheet to begin.",
+                  )}
+                >
+                  <Link className="button button--primary" to="/sheets">
+                    {t("Open worksheets")}
+                  </Link>
+                </Empty>
               )}
             </section>
           </>
@@ -160,6 +143,35 @@ export default function Dashboard() {
       </Resource>
       <ShareDialog worksheetId={share} onClose={() => setShare(null)} />
     </Page>
+  );
+}
+function TeacherGuide({ counts }: { counts: number[] }) {
+  const { t } = useLanguage();
+  if (counts.every(Boolean)) return null;
+  return (
+    <section className="panel teacher-guide">
+      <h2>{t("teacher.getStarted")}</h2>
+      <div className="teacher-guide-steps">
+        {[
+          { to: "/classes", key: "teacher.addClass" },
+          { to: "/sheets", key: "teacher.makeWorksheet" },
+          { to: "/assignments", key: "teacher.giveWork" },
+        ].map((step, index) => (
+          <Link key={step.to} to={step.to}>
+            <span
+              className={counts[index] ? "guide-step complete" : "guide-step"}
+            >
+              {index + 1}
+            </span>
+            <span>
+              {t(step.key)}
+              {counts[index] > 0 && <small>{t("teacher.ready")}</small>}
+            </span>
+            <ArrowUpRight size={16} />
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 export function Account() {

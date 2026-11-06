@@ -97,4 +97,10 @@ public class ClassroomController {
     public ClassroomResponse rotateJoinCode(@PathVariable Long classroomId, HttpServletRequest request) {
         return service.rotateJoinCode(classroomId, sessions.requireRole(request, UserRole.TEACHER));
     }
+
+    @PostMapping("/{classroomId}/members/{userId}/code/rotate")
+    public ClassroomMemberResponse rotateStudentCode(@PathVariable Long classroomId, @PathVariable Long userId,
+            HttpServletRequest request) {
+        return service.rotateStudentCode(classroomId, userId, sessions.requireRole(request, UserRole.TEACHER));
+    }
 }

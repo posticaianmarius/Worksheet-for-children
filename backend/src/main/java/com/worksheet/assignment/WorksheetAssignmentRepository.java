@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface WorksheetAssignmentRepository extends JpaRepository<WorksheetAssignment, Long> {
+    List<WorksheetAssignment> findByBatchId(java.util.UUID batchId);
     List<WorksheetAssignment> findByClassroom_Id(Long classroomId);
     List<WorksheetAssignment> findByClassroom_IdAndWorksheetRevision_Id(Long classroomId, Long revisionId);
     List<WorksheetAssignment> findByClassroomIsNullAndWorksheetRevision_Id(Long revisionId);

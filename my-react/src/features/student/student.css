@@ -1,0 +1,115 @@
+.student-shell {
+  min-height: 100dvh;
+  background: #f8f9fc;
+}
+.student-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px max(24px, calc((100% - 1120px) / 2));
+  background: white;
+  border-bottom: 1px solid var(--color-border);
+}
+.student-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.student-nav {
+  display: flex;
+  gap: 8px;
+  max-width: 1168px;
+  margin: 24px auto 0;
+  padding: 0 24px;
+}
+.student-nav a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+.student-nav a.active {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  font-weight: 600;
+}
+.student-shell .page {
+  max-width: 1168px;
+  margin: 0 auto;
+}
+.student-work-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.student-work-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.student-work-card h2 {
+  font-size: 22px;
+}
+.student-work-card > .button {
+  width: 100%;
+  margin-top: auto;
+}
+.student-work-card > .status {
+  margin-bottom: 12px;
+}
+.student-settings {
+  max-width: 560px;
+}
+.student-settings > p {
+  margin: 12px 0 24px;
+}
+@media (max-width: 767px) {
+  .student-header {
+    padding: 16px 20px;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .student-header .brand {
+    font-size: 20px;
+    gap: 9px;
+  }
+  .student-header > .actions {
+    gap: 8px;
+    margin-left: auto;
+  }
+  .student-name {
+    display: none;
+  }
+  .student-language {
+    display: none;
+  }
+  .student-nav {
+    padding: 0 20px;
+    gap: 4px;
+  }
+  .student-nav a {
+    padding: 10px;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .student-work-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 359px) {
+  .student-header {
+    gap: 10px;
+  }
+  .student-header .brand {
+    font-size: 17px;
+  }
+  .student-header .brand-mark {
+    width: 33px;
+    height: 33px;
+  }
+}

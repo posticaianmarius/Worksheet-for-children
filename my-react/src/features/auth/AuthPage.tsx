@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { api, canTeach } from "../../shared/api";
+import { Brand } from "../../shared/Brand";
 import { useLanguage, useSession } from "../../app/state";
 import { Button, ErrorNotice } from "../../shared/ui";
 export default function AuthPage() {
@@ -34,7 +35,7 @@ export default function AuthPage() {
       const from = (state as { from?: string } | null)?.from;
       const safe =
         from?.startsWith("/") && !from.startsWith("//") ? from : undefined;
-      navigate(safe ?? (canTeach(user) ? "/sheets" : "/home"), {
+      navigate(safe ?? (canTeach(user) ? "/home" : "/student"), {
         replace: true,
       });
     } catch (e) {
@@ -46,73 +47,88 @@ export default function AuthPage() {
   return (
     <main className="auth-layout">
       <section className="auth-card" aria-labelledby="auth-title">
-        <h1 id="auth-title">{t(signup ? "Account for teachers" : "Log in")}</h1>
+        <Link className="auth-brand" to="/" aria-label={t("Play")}>
+          <Brand />
+        </Link>
+        <h1 id="auth-title">
+          {t(signup ? "Account for teachers" : "auth.login")}
+        </h1>
         <form
-          className="form-stack"
+          className="auth-form"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
           }}
         >
           {signup && (
-            <>
+            <div className="auth-field">
               <label htmlFor="name">{t("Username")}</label>
               <input
                 id="name"
                 autoComplete="nickname"
+                placeholder={t("auth.nameExample")}
                 maxLength={100}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 disabled={busy}
               />
-            </>
+            </div>
           )}
-          <label htmlFor="email">{t("Email")}</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            maxLength={254}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={busy}
-          />
-          <label htmlFor="password">{t("Password")}</label>
-          <div className="password-field">
+          <div className="auth-field">
+            <label htmlFor="email">{t("Email")}</label>
             <input
-              id="password"
-              type={visible ? "text" : "password"}
-              autoComplete={signup ? "new-password" : "current-password"}
-              minLength={15}
-              maxLength={128}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder={t("auth.emailExample")}
+              maxLength={254}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               disabled={busy}
-              aria-describedby={signup ? "password-hint" : undefined}
             />
-            <Button
-              variant="ghost"
-              aria-label={t(visible ? "Hide password" : "Show password")}
-              onClick={() => setVisible((value) => !value)}
-            >
-              {visible ? <EyeOff size={18} /> : <Eye size={18} />}
-            </Button>
+          </div>
+          <div className="auth-field">
+            <label htmlFor="password">{t("Password")}</label>
+            <div className="password-field">
+              <input
+                id="password"
+                type={visible ? "text" : "password"}
+                autoComplete={signup ? "new-password" : "current-password"}
+                placeholder={t(
+                  signup ? "auth.createPassword" : "auth.enterPassword",
+                )}
+                minLength={15}
+                maxLength={128}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={busy}
+                aria-describedby={signup ? "password-hint" : undefined}
+              />
+              <Button
+                variant="ghost"
+                aria-label={t(visible ? "Hide password" : "Show password")}
+                onClick={() => setVisible((value) => !value)}
+              >
+                {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+              </Button>
+            </div>
+            {signup && (
+              <small className="muted" id="password-hint">
+                {t("auth.password")}
+              </small>
+            )}
           </div>
           {signup && (
-            <small className="muted" id="password-hint">
-              {t("auth.password")}
-            </small>
-          )}
-          {signup && (
-            <>
+            <div className="auth-field">
               <label htmlFor="confirmation">{t("Confirm password")}</label>
               <input
                 id="confirmation"
                 type={visible ? "text" : "password"}
                 autoComplete="new-password"
+                placeholder={t("auth.repeatPassword")}
                 minLength={15}
                 maxLength={128}
                 value={confirm}
@@ -120,7 +136,7 @@ export default function AuthPage() {
                 required
                 disabled={busy}
               />
-            </>
+            </div>
           )}
           <ErrorNotice error={error} />
           <Button variant="primary" type="submit" busy={busy}>

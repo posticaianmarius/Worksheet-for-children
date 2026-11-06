@@ -146,6 +146,13 @@ public class ClassroomService {
         return code;
     }
 
+    public ClassroomMemberResponse rotateStudentCode(Long classroomId, Long userId, User teacher) {
+        ClassroomMember member = requireMember(classroomId, userId, teacher);
+        if (member.getLeftAt() != null || member.getClassroom().getArchivedAt() != null) throw notFound();
+        member.setStudentCode(nextStudentCode());
+        return memberResponse(members.save(member));
+    }
+
     private ClassroomMember requireMember(Long classroomId, Long userId, User teacher) {
         requireOwnedClassroom(classroomId, teacher);
         return members.findByClassroom_IdAndUser_Id(classroomId, userId).orElseThrow(this::notFound);

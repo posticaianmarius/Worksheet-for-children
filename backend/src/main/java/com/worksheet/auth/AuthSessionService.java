@@ -14,13 +14,24 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AuthSessionService {
     private static final String USER_ID = "auth.userId";
+    private static final String STUDENT_CODE = "auth.studentCode";
     private final UserRepository users;
+    private final List<CodeSessionValidator> codeValidators;
 
-    public AuthSessionService(UserRepository users) {
+    public AuthSessionService(UserRepository users, List<CodeSessionValidator> codeValidators) {
         this.users = users;
+        this.codeValidators = codeValidators;
     }
 
     public Long requireUserId(HttpServletRequest request) {
+        var activeSession = request.getSession(false);
+        if (activeSession != null && activeSession.getAttribute(STUDENT_CODE) instanceof String code
+                && activeSession.getAttribute(USER_ID) instanceof Long id
+                && codeValidators.stream().noneMatch(validator -> validator.isValid(id, code))) {
+            activeSession.invalidate();
+            SecurityContextHolder.clearContext();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Your student code has changed. Ask your teacher for your code.");
+        }
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()
                 && authentication.getPrincipal() instanceof String principal) {
@@ -60,6 +71,7 @@ public class AuthSessionService {
         request.getSession();
         request.changeSessionId();
         request.getSession().setAttribute(USER_ID, user.id());
+        request.getSession().removeAttribute(STUDENT_CODE);
         request.getSession().setMaxInactiveInterval(30 * 60);
         var authentication = UsernamePasswordAuthenticationToken.authenticated(
             user.id().toString(), null, List.of(new SimpleGrantedAuthority("ROLE_" + user.role().name())));
@@ -68,5 +80,10 @@ public class AuthSessionService {
         SecurityContextHolder.setContext(context);
         request.getSession().setAttribute(
             HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
+    }
+
+    public void startCodeSession(HttpServletRequest request, UserResponse user, String code) {
+        startSession(request, user);
+        request.getSession().setAttribute(STUDENT_CODE, code.strip().toUpperCase(java.util.Locale.ROOT));
     }
 }

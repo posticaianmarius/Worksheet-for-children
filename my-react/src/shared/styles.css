@@ -877,6 +877,6 @@ progress::-moz-progress-bar {
   scroll-behavior: auto !important;
 }
 
-main:focus:not(:focus-visible) {
+main[tabindex="-1"]:focus {
   outline: none;
 }

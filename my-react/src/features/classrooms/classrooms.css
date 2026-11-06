@@ -2,6 +2,77 @@
   position: relative;
 }
 
+.class-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.access-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.access-card {
+  background: white;
+  border: 1px dashed #c7bfdc;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  break-inside: avoid;
+}
+.access-card .brand {
+  font-size: 19px;
+}
+.access-card h2 {
+  margin-top: 12px;
+}
+.access-card p,
+.access-card small {
+  overflow-wrap: anywhere;
+}
+.access-code {
+  letter-spacing: 4px;
+  font-size: 26px;
+}
+@media (max-width: 1023px) {
+  .access-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .access-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media print {
+  body:has(.access-page) {
+    background: white;
+  }
+  .workspace:has(.access-page) {
+    display: block;
+  }
+  .workspace:has(.access-page) .sidebar,
+  .workspace:has(.access-page) .workspace-header,
+  .access-toolbar,
+  .skip-link {
+    display: none;
+  }
+  .access-page main {
+    padding: 0;
+  }
+  .access-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12mm;
+  }
+  .access-card {
+    box-shadow: none;
+    border-radius: 0;
+  }
+}
+
 .classListCard h2,
 .assignmentClassCard h2 {
   margin: 20px 0 8px;

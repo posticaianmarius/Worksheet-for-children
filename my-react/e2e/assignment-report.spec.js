@@ -117,6 +117,7 @@ async function mockApi(page, { student = false, fail = false } = {}) {
           student ? { ...teacher, id: 2, role: "USER", name: "Ana" } : teacher,
         );
       if (path === "/api/classes") return reply(classes);
+      if (path === "/api/worksheets") return reply([]);
       if (path === "/api/assignments/report") {
         reports++;
         if (unavailable) return reply({ message: "Connection lost" }, 503);
@@ -149,11 +150,8 @@ test("teachers browse classes, worksheet versions and student completion with ze
   page,
 }) => {
   await mockApi(page);
-  await page.goto("/assignments");
+  await page.goto("/assignments/classes/10");
   await expect(page.getByRole("heading", { name: "Clasa A" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Clasa B" })).toBeVisible();
-  await expect(page.getByText("Ana", { exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Clasa A 2 worksheets" }).click();
   await expect(page).toHaveURL(/\/assignments\/classes\/10$/);
   await expect(page.getByText("ABCD2345", { exact: true })).toBeVisible();
   await expect(page.getByText("Code replaced", { exact: true })).toBeVisible();
@@ -230,7 +228,9 @@ test("failed reports can be retried and students keep their own assignment list"
   ).toBeVisible();
   outage.recover();
   await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByRole("heading", { name: "Clasa A" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Numbers" }).first(),
+  ).toBeVisible();
   await page.unrouteAll();
   const state = await mockApi(page, { student: true });
   await page.goto("/assignments");

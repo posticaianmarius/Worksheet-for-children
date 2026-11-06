@@ -155,3 +155,49 @@
     font-size: 13px;
   }
 }
+.teacher-guide {
+  margin-bottom: 24px;
+}
+.teacher-guide h2 {
+  margin-bottom: 20px;
+}
+.teacher-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.teacher-guide-steps a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-ink);
+  font-size: 13px;
+}
+.teacher-guide-steps a > svg {
+  margin-left: auto;
+}
+.teacher-guide-steps small {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-success);
+}
+.guide-step {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.guide-step.complete {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+@media (max-width: 767px) {
+  .teacher-guide-steps {
+    grid-template-columns: 1fr;
+  }
+}

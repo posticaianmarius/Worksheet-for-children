@@ -1,4 +1,36 @@
-# Worksheet for Children — implemented architecture
+# PlaySheets — implemented architecture
+
+## Product structure
+
+PlaySheets has one application with separate teacher and student workspaces.
+Teachers use Home, Worksheets, Classes, Assignments, Results and account settings.
+Students use My work, Finished work and personal preferences. The game player is
+an immersive view with a return to My work and a clear switch-student action.
+The frontend uses shared Brand, LanguageMenu, primitives and session guards;
+student screens never render the teacher sidebar or request teacher reports.
+
+Teachers create student profiles inside a class. A personal student code signs in
+at `POST /api/play/login` and opens `/student`; a worksheet code is an optional
+direct-launch shortcut through the existing `/api/play/join` contract. The student
+code authenticates an identity, while a worksheet code selects content. Classroom
+membership and assignment ownership still control access on the backend.
+Code replacement invalidates the old credential and code-authenticated sessions;
+the profile, assignments, attempts and results retain their IDs. Teachers can print
+individual access cards. Existing email-based USER accounts remain compatible.
+
+A worksheet is reusable editable content. An assignment delivery is identified by
+the existing `batchId`, with one assignment row per recipient and a frozen worksheet
+revision. Teachers can target a whole class or `classroomId` with explicit `userIds`.
+The Assignments screen manages each delivery independently; Results shows saved
+progress, including closed work. Closing a batch abandons its unfinished attempts
+and preserves completed work without closing another delivery of the same revision.
+Class pages provide Students, Assignments and Progress tabs using the same feature
+components as the global views. Historical revision-group report links remain valid.
+
+This change reuses existing membership, student-code, batch and revision columns;
+no database reset, reseeding or identity migration is required. Existing routes and
+legacy assignment APIs remain available for bookmarks and historical data.
+
 
 The redesigned React client uses strict TypeScript, lazy routes, a shared design
 system, and separate game engines, editors and players. See

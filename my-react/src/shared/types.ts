@@ -104,6 +104,7 @@ export interface Member {
   teacherManaged?: boolean;
 }
 export interface Assignment {
+  batchId?: string;
   id: number;
   userId: number;
   userName?: string;
@@ -145,6 +146,7 @@ export interface StudentTest {
   startedAt?: string;
 }
 export interface ReportRow {
+  batchId?: string;
   assignmentId: number;
   classroomId: number | null;
   classroomName: string;

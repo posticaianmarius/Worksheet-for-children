@@ -76,6 +76,6 @@ public class AssignmentReportService {
             assignment.getRemovedAt() != null ? "REMOVED" : codeMatches ? "ACTIVE" : worksheet.getShareCode() == null ? "NOT_SHARED" : "VERSION_CHANGED",
             assignment.getUser().getId(), assignment.getUser().getName(), assignment.getAssignedAt(),
             assignment.getRevokedAt(), assignment.getRemovedAt(), status, useLegacy || completed == null ? null : completed.getId(),
-            score, maxScore, completedAt);
+            score, maxScore, completedAt, assignment.getBatchId());
     }
 }

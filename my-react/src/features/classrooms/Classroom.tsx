@@ -1,6 +1,6 @@
 import "./classrooms.css";
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { lazy, Suspense, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Plus, Copy, Play, Presentation } from "lucide-react";
 import { useLanguage, useSession } from "../../app/state";
 import { api, canTeach } from "../../shared/api";
@@ -14,15 +14,22 @@ import {
   Page,
   SortHeading,
   Status,
+  Loading,
 } from "../../shared/ui";
 import { Resource, useResource } from "../../shared/resource";
 import { useSort } from "../../shared/sorting";
 import type { Member, Worksheet } from "../../shared/types";
+const TeacherAssignments = lazy(
+  () => import("../assignments/TeacherAssignments"),
+);
+const Results = lazy(() => import("../assignments/Results"));
 export default function Classroom() {
   const { id = "" } = useParams(),
     { t, language } = useLanguage(),
     { user } = useSession(),
     teacher = canTeach(user);
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") ?? "students";
   const query = useResource(["classroom", id], async () => {
     const [classroom, students, worksheets, assignments] = await Promise.all([
       api.classroom(id),
@@ -115,6 +122,12 @@ export default function Classroom() {
                   <Play size={16} />
                   {t("Start a test")}
                 </Button>
+                <Link
+                  className="button"
+                  to={"/classes/" + id + "/access-cards"}
+                >
+                  {t("class.accessCards")}
+                </Link>
                 <Button variant="primary" onClick={() => edit()}>
                   <Plus size={17} />
                   {t("Add student")}
@@ -129,6 +142,30 @@ export default function Classroom() {
               { label: t("Members") },
             ]}
           />
+          {teacher && (
+            <nav className="class-tabs" aria-label={classroom.name}>
+              {["students", "assignments", "progress"].map((key) => (
+                <Button
+                  key={key}
+                  variant={tab === key ? "primary" : "ghost"}
+                  aria-pressed={tab === key}
+                  onClick={() => setParams({ tab: key })}
+                >
+                  {t("class.tab." + key)}
+                </Button>
+              ))}
+            </nav>
+          )}
+          {teacher && tab === "assignments" && (
+            <Suspense fallback={<Loading />}>
+              <TeacherAssignments classroomId={id} embedded />
+            </Suspense>
+          )}
+          {teacher && tab === "progress" && (
+            <Suspense fallback={<Loading />}>
+              <Results classroomId={id} embedded />
+            </Suspense>
+          )}
           {student === null && !testOpen && <ErrorNotice error={error} />}
           {testCode && (
             <section className="test-code-banner">
@@ -151,7 +188,7 @@ export default function Classroom() {
           )}
           {notice && <p role="status">{notice}</p>}
           {teacher ? (
-            students.length ? (
+            tab !== "students" ? null : students.length ? (
               <section className="panel table-panel">
                 <div className="table-scroll">
                   <table className="roster-table">
@@ -219,6 +256,24 @@ export default function Classroom() {
                                 <Button onClick={() => edit(item)}>
                                   {t("Rename")}
                                 </Button>
+                              )}
+                              {item.studentCode && (
+                                <Confirm
+                                  title={t("class.resetCodeTitle")}
+                                  confirmLabel={t("class.resetCode")}
+                                  confirmVariant="primary"
+                                  description={t("class.resetCodeHelp")}
+                                  onConfirm={async () => {
+                                    await api.resetStudentCode(id, item.userId);
+                                    await query.refetch();
+                                  }}
+                                >
+                                  {(show) => (
+                                    <Button variant="ghost" onClick={show}>
+                                      {t("class.resetCode")}
+                                    </Button>
+                                  )}
+                                </Confirm>
                               )}
                               {!item.studentCode && (
                                 <Button

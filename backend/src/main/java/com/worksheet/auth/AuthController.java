@@ -4,13 +4,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import static org.springframework.http.HttpStatus.*;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-    private static final String USER_ID = "auth.userId";
     private final AuthService auth;
     private final AuthSessionService sessions;
 
@@ -36,11 +34,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public UserResponse me(HttpServletRequest request) {
-        var session = request.getSession(false);
-        if (session == null || !(session.getAttribute(USER_ID) instanceof Long id)) {
-            throw new ResponseStatusException(UNAUTHORIZED, "Please log in.");
-        }
-        return auth.currentUser(id);
+        return auth.currentUser(sessions.requireUserId(request));
     }
 
     @PostMapping("/logout")

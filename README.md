@@ -128,19 +128,27 @@ npm run dev
 
 Open http://localhost:5173. Vite forwards `/api` requests to the backend on port 8080.
 
-## Children play with codes
+## Teacher and student workspaces
 
-Teachers sign up, create a class, and add children by name using **Adaugă elev**.
-Each child receives a personal code; no child email, password, or signup is required.
-For existing class members, use **Generează cod** to enable code entry.
+Teachers sign in, create a class, and add students by name. Each student receives a
+private personal code; no child email, password or signup is required. Existing
+class members can receive a code using **Generate code** without changing their
+identity or saved work. The teacher can print access cards or replace a lost code.
 
-Use **Începe un test** in the class to select a worksheet and obtain its code.
-Children enter their personal code and the worksheet code on the public home page.
-Unfinished attempts resume, and completed scores are saved under the child in the class.
-Click a child's name, then a test, to see question results; breadcrumbs return to the class.
-Removing a child revokes access while retaining results for the teacher.
+Teachers build reusable worksheets, then assign a frozen version to a whole class
+or selected students. Classes have **Students**, **Assignments** and **Progress**
+tabs. Global **Assignments** manages each delivery independently; **Results** shows
+progress and saved scores, including closed assignments.
 
-Restart the backend after updating so Flyway applies V21, which adds personal access codes.
+Students enter their personal code on the home page and open **My work**. They can
+start or resume an assigned worksheet, review **Finished work**, and adjust their
+preferences. A worksheet code remains an optional shortcut into a particular task.
+**Another child** signs out before a shared device changes hands.
+
+Replacing a code ends sessions using the old credential. Closing an assignment or
+removing a student stops access while retaining the teacher's completed history.
+Existing worksheet IDs, immutable revisions, student identities and saved results
+are preserved; this architecture change reuses the existing database columns.
 
 ## Build and verify the backend
 

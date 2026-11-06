@@ -96,6 +96,12 @@ export const api = {
     send<Member>("/api/classes/" + id + "/members/" + user, "PATCH", { name }),
   issueCode: (id: Id, user: Id) =>
     send<Member>("/api/classes/" + id + "/members/" + user + "/code"),
+  resetStudentCode: (id: Id, user: Id) =>
+    send<Member>("/api/classes/" + id + "/members/" + user + "/code/rotate"),
+  studentLogin: (studentCode: string) =>
+    send<User>("/api/play/login", "POST", {
+      studentCode: studentCode.trim().toUpperCase(),
+    }),
   removeMember: (id: Id, user: Id) =>
     send<void>("/api/classes/" + id + "/members/" + user, "DELETE"),
   studentTests: (id: Id, user: Id) =>
@@ -125,7 +131,12 @@ export const api = {
         revisionId,
       "DELETE",
     ),
-  assign: (id: Id, body: { classroomId?: number; userId?: number }) =>
+  removeAssignmentBatch: (batchId: string) =>
+    send<void>("/api/assignments/batches/" + batchId, "DELETE"),
+  assign: (
+    id: Id,
+    body: { classroomId?: number; userId?: number; userIds?: number[] },
+  ) =>
     send<Assignment[]>("/api/worksheets/" + id + "/assignments", "POST", body),
   joinWorksheet: (code: string) =>
     send<{ assignmentId: number }>("/api/worksheets/join", "POST", {

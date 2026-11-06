@@ -55,7 +55,8 @@ public class WorksheetAssignmentService {
     @Transactional
     public List<WorksheetAssignmentResponse> create(Long worksheetId, User teacher, CreateAssignmentRequest request) {
         requireRole(teacher, UserRole.TEACHER);
-        if((request.classroomId() == null) == (request.userId() == null)) {
+        if((request.classroomId() == null) == (request.userId() == null)
+                || (request.userIds() != null && request.classroomId() == null)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Provide exactly one of classroomId or userId.");
         }
         Worksheet worksheet = worksheets.findByIdAndUser_Id(worksheetId, teacher.getId())
@@ -69,6 +70,16 @@ public class WorksheetAssignmentService {
                 .filter(value -> value.getArchivedAt() == null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Class not found."));
             List<ClassroomMember> recipients = members.findByClassroom_IdAndLeftAtIsNullOrderByJoinedAt(classroom.getId());
+            if (request.userIds() != null) {
+                var selected = new java.util.HashSet<>(request.userIds());
+                if (selected.isEmpty() || selected.contains(null) || selected.size() != request.userIds().size()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select one or more distinct students.");
+                }
+                recipients = recipients.stream().filter(member -> selected.contains(member.getUser().getId())).toList();
+                if (recipients.size() != selected.size()) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "A selected student is not an active member of this class.");
+                }
+            }
             if(recipients.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Class has no active users.");
             created = recipients.stream()
                 .map(member -> new WorksheetAssignment(batchId, revision, classroom, member.getUser()))
@@ -102,6 +113,18 @@ public class WorksheetAssignmentService {
             ? assignments.findByClassroomIsNullAndWorksheetRevision_Id(revisionId)
             : assignments.findByClassroom_IdAndWorksheetRevision_Id(classroomId, revisionId);
         var owned = group.stream().filter(value -> value.getTeacher().getId().equals(teacher.getId())).toList();
+        if (owned.isEmpty()) throw assignmentNotFound();
+        owned.forEach(WorksheetAssignment::remove);
+        for (var assignment : owned) {
+            attempts.findByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.IN_PROGRESS)
+                .forEach(com.worksheet.attempt.WorksheetAttempt::abandon);
+        }
+    }
+
+    public void removeBatch(UUID batchId, User teacher) {
+        requireRole(teacher, UserRole.TEACHER);
+        var owned = assignments.findByBatchId(batchId).stream()
+            .filter(value -> value.getTeacher().getId().equals(teacher.getId())).toList();
         if (owned.isEmpty()) throw assignmentNotFound();
         owned.forEach(WorksheetAssignment::remove);
         for (var assignment : owned) {
@@ -144,7 +167,9 @@ public class WorksheetAssignmentService {
         AssignmentStatus status = assignment.getRevokedAt() != null ? AssignmentStatus.REVOKED
             : results.existsByAssignment_Id(assignment.getId())
                 || attempts.existsByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.COMPLETED)
-                ? AssignmentStatus.COMPLETED : AssignmentStatus.NOT_STARTED;
+                ? AssignmentStatus.COMPLETED
+                : attempts.existsByAssignment_IdAndStatus(assignment.getId(), AttemptStatus.IN_PROGRESS)
+                    ? AssignmentStatus.IN_PROGRESS : AssignmentStatus.NOT_STARTED;
         Long classroomId = assignment.getClassroom() == null ? null : assignment.getClassroom().getId();
         return new WorksheetAssignmentResponse(assignment.getId(), assignment.getBatchId(), worksheetResponse,
             assignment.getTeacher().getId(), assignment.getTeacher().getName(), classroomId,

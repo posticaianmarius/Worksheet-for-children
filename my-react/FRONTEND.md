@@ -93,3 +93,15 @@ otherwise Playwright starts Vite with the usual backend proxy.
 Backend verification uses `mvnw clean verify` with Docker available, including
 populated-database upgrades. The real-backend browser test and backend suite
 complement the fast mocked UI regressions.
+
+## Teacher and student architecture
+
+`features/student` owns the learner layout, My work, Finished work and preferences.
+`app/guards.tsx` owns route session/role checks, with backend ownership checks still
+required. `shared/Brand.tsx` and `shared/LanguageMenu.tsx` are shared by both layouts.
+Teacher Home gives setup guidance and counts assignment deliveries, not recipients.
+Class pages reuse TeacherAssignments and Results in their tabs. Assignments are
+managed using batch UUIDs; legacy revision-group report routes remain compatible.
+The personal-code entry point keeps the two-code shortcut in an optional disclosure.
+Auth, students and teachers have separate layouts while the game registry, editors,
+players, configuration schemas and scoring contracts remain shared and unchanged.

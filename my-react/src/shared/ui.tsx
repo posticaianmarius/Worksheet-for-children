@@ -129,11 +129,15 @@ export function Confirm({
   description,
   onConfirm,
   children,
+  confirmLabel,
+  confirmVariant = "danger",
 }: {
   title: string;
   description?: string;
   onConfirm: () => Promise<unknown> | void;
   children: (open: () => void) => ReactNode;
+  confirmLabel?: string;
+  confirmVariant?: "primary" | "danger";
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -167,8 +171,12 @@ export function Confirm({
           <Button disabled={busy} onClick={() => setOpen(false)}>
             {t("Cancel")}
           </Button>
-          <Button variant="danger" busy={busy} onClick={() => void confirm()}>
-            {t("Delete")}
+          <Button
+            variant={confirmVariant}
+            busy={busy}
+            onClick={() => void confirm()}
+          >
+            {confirmLabel ?? t("Delete")}
           </Button>
         </div>
       </Modal>

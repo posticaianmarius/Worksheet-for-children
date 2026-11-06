@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class SpaController {
 
     @GetMapping({"/login", "/signup", "/home", "/home/{legacyName}", "/account", "/sheets",
+        "/student", "/student/finished", "/student/settings", "/results", "/classes/{id}/access-cards",
         "/teacher", "/teacher/{id}", "/kids", "/kids/{id}", "/classes", "/classes/{id}",
         "/assignments", "/assignments/{id}", "/assignments/classes/{classId}",
         "/assignments/classes/{classId}/worksheets/{revisionId}", "/attempts/{id}", "/home/{className}/{kidName}",

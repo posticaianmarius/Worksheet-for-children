@@ -27,6 +27,12 @@ public class WorksheetAssignmentController {
         return reports.getReport(sessions.requireRole(request, UserRole.TEACHER), includeRemoved);
     }
 
+    @DeleteMapping("/assignments/batches/{batchId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeBatch(@PathVariable java.util.UUID batchId, HttpServletRequest request) {
+        service.removeBatch(batchId, sessions.requireRole(request, UserRole.TEACHER));
+    }
+
     @DeleteMapping("/assignments/classes/{classroomId}/revisions/{revisionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeGroup(@PathVariable Long classroomId, @PathVariable Long revisionId, HttpServletRequest request) {

@@ -85,6 +85,7 @@ test("children enter codes, resume unfinished work and finish without signup", a
   await page.setViewportSize({ width: 390, height: 844 });
 
   await page.getByLabel("Codul elevului").fill("abcd2345");
+  await page.getByText("Deschide direct o fișă", { exact: true }).click();
   await page.getByLabel("Codul fișei").fill("efgh6789");
   await page.getByRole("button", { name: "Verifică și începe" }).click();
   await expect(page).toHaveURL(/\/attempts\/40$/);

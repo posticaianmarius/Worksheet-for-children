@@ -19,10 +19,24 @@ public class StudentPlayService {
     }
 
     @Transactional
+    public UserResponse login(String studentCode) {
+        var member = requireMember(studentCode);
+        if (member.getUser().getRole() != com.worksheet.auth.UserRole.USER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only students can sign in with a student code.");
+        }
+        return UserResponse.from(member.getUser());
+    }
+
+    private ClassroomMember requireMember(String studentCode) {
+        if (studentCode == null || studentCode.isBlank() || studentCode.strip().length() > 12) throw invalidCode();
+        return members.findByStudentCodeAndLeftAtIsNull(studentCode.strip().toUpperCase(Locale.ROOT))
+            .filter(member -> member.getClassroom().getArchivedAt() == null)
+            .orElseThrow(this::invalidCode);
+    }
+
+    @Transactional
     public StudentEntry join(String studentCode, String worksheetCode) {
-        if (studentCode == null || studentCode.isBlank()) throw invalidCode();
-        ClassroomMember member = members.findByStudentCodeAndLeftAtIsNull(
-            studentCode.strip().toUpperCase(Locale.ROOT)).orElseThrow(this::invalidCode);
+        ClassroomMember member = requireMember(studentCode);
         var worksheet = shares.joinForStudent(worksheetCode, member);
         UserResponse child = new UserResponse(member.getUser().getId(), member.getUser().getName(),
             null, member.getUser().getRole(), member.getUser().getCreatedAt());
