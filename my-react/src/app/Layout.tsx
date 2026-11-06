@@ -1,4 +1,6 @@
 import "./layout.css";
+import "../features/spaces/spaces.css";
+import { SpaceSwitcher } from "../features/spaces/SpaceContext";
 import { Brand } from "../shared/Brand";
 import { LanguageMenu } from "../shared/LanguageMenu";
 import { RequireSession } from "./guards";
@@ -145,6 +147,12 @@ export function Workspace() {
       ? [{ to: "/sheets", label: "Worksheets", Icon: BookOpen }]
       : []),
     { to: "/classes", label: "Classes", Icon: Users },
+    ...(user?.role==="TEACHER"
+      ? [
+          { to: "/students", label: "Students", Icon: Users },
+          { to: "/space", label: "Teaching space", Icon: Settings },
+        ]
+      : []),
     { to: "/assignments", label: "Assignments", Icon: ClipboardList },
     ...(teacher
       ? [{ to: "/results", label: "Results", Icon: ChartNoAxesCombined }]
@@ -155,6 +163,7 @@ export function Workspace() {
     (editor ? "Worksheets" : "Account");
   const nav = (
     <>
+      <SpaceSwitcher />
       <div className="nav-links">
         {links.map(({ to, label, Icon }) => (
           <NavLink

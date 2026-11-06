@@ -52,6 +52,20 @@ export const router = createBrowserRouter([
             }),
           },
           {
+            path: "work/:batchId",
+            lazy: async () => ({
+              Component: (await import("../features/assignments/DeliveryEntry"))
+                .default,
+            }),
+          },
+          {
+            path: "invite",
+            lazy: async () => ({
+              Component: (await import("../features/spaces/Invitation"))
+                .default,
+            }),
+          },
+          {
             path: "login",
             lazy: async () => ({
               Component: (await import("../features/auth/AuthPage")).default,
@@ -120,6 +134,19 @@ export const router = createBrowserRouter([
       {
         Component: TeacherLayout,
         children: [
+          {
+            path: "students",
+            lazy: async () => ({
+              Component: (await import("../features/spaces/Students")).default,
+            }),
+          },
+          {
+            path: "space",
+            lazy: async () => ({
+              Component: (await import("../features/spaces/SpaceSettings"))
+                .default,
+            }),
+          },
           {
             path: "results",
             lazy: async () => ({

@@ -231,6 +231,7 @@ class TeacherArchitectureTests {
             .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(1)));
         mvc.perform(get("/api/attempts/{id}", attemptId).session(user.session()))
             .andExpect(status().isNotFound());
+        mvc.perform(get("/api/assignments/{id}/attempts",assignmentId).session(user.session())).andExpect(status().isOk()).andExpect(jsonPath("$",hasSize(0)));
         mvc.perform(get("/api/attempts/{id}", attemptId).session(teacher.session()))
             .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ABANDONED"));
     }

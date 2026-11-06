@@ -1,10 +1,12 @@
 import { translate } from "../platform/translations.js";
+import { spaceCopy } from "../features/spaces/translations";
 export type Language = "en" | "ro";
 export type Translate = (
   key: string,
   values?: Record<string, unknown>,
 ) => string;
 const copy: Record<string, [string, string]> = {
+  ...spaceCopy,
   "auth.nameExample": ["e.g. Ana Popescu", "ex. Ana Popescu"],
   "auth.emailExample": ["e.g. teacher@example.com", "ex. profesor@example.com"],
   "auth.enterPassword": ["Enter your password", "Introdu parola"],

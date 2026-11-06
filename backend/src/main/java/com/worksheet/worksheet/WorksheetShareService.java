@@ -90,15 +90,17 @@ public class WorksheetShareService {
     private JoinWorksheetResponse join(String rawCode,User user,ClassroomMember member) {
         return joinInSpace(rawCode,user,member==null?spaces.currentSpace(user):spaces.classSpace(member.getClassroom()));
     }
-    public record Choice(Long assignmentId,UUID batchId,String classroomName,String title) {}
+    public record Choice(Long assignmentId,UUID batchId,String classroomName,String title,String worksheetName,java.time.Instant assignedAt) {}
     public java.util.List<Choice> choices(String rawCode,User user) {
         Long spaceId=spaces.currentSpace(user);
         var worksheet=worksheets.findByShareCode(normalize(rawCode)).orElseThrow(this::codeNotFound);
         if(worksheet.getShareRevision()==null) return java.util.List.of();
         return assignments.findBySpaceIdAndUser_IdOrderByAssignedAtDesc(spaceId,user.getId()).stream()
             .filter(a -> a.getWorksheetRevision().getId().equals(worksheet.getShareRevision().getId()) && spaces.canWrite(a,user))
-            .map(a -> new Choice(a.getId(),a.getBatchId(),a.getClassroom()==null?null:a.getClassroom().getName(),spaces.register(a,null).title)).toList();
+            .map(a -> new Choice(a.getId(),a.getBatchId(),a.getClassroom()==null?null:a.getClassroom().getName(),
+                spaces.register(a,null).title,pinnedName(a),a.getAssignedAt())).toList();
     }
+    private String pinnedName(WorksheetAssignment assignment) { return assignment.getWorksheetRevision().getNameSnapshot(); }
     public JoinWorksheetResponse joinInSpace(String rawCode,User user,Long spaceId) {
         var worksheet=worksheets.findByShareCode(normalize(rawCode)).orElseThrow(this::codeNotFound);
         var revision=worksheet.getShareRevision();

@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 
 test.use({ hasTouch: true });
@@ -66,6 +67,15 @@ async function openGame(
     (url) => url.pathname.startsWith("/api/"),
     async (route) => {
       const path = new URL(route.request().url()).pathname;
+      if (path === "/api/auth/context") {
+        const contextRoute = {
+          fulfill: (options) =>
+            route.fulfill({ ...options, json: spaceContextFor(options.json) }),
+        };
+        return contextRoute.fulfill({
+          json: { id: 2, name: "Ana", role: "USER" },
+        });
+      }
       if (path === "/api/auth/me")
         return route.fulfill({ json: { id: 2, name: "Ana", role: "USER" } });
       if (path === "/api/auth/csrf")

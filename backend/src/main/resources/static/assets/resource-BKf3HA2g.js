@@ -1,1 +1,0 @@
-import{a as e,f as t,u as n}from"./state-DNMqka-d.js";import{d as r,u as i}from"./index-FUDloiKv.js";var a=t();function o(t,r){let{user:i}=e();return n({queryKey:[i?.id,...t],queryFn:r})}function s({query:e,children:t}){return e.isPending?(0,a.jsx)(r,{}):e.error?(0,a.jsx)(i,{error:e.error,retry:()=>{e.refetch()}}):e.data===void 0?null:t(e.data)}export{o as n,s as t};

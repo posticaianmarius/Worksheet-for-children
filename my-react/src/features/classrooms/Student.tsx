@@ -11,14 +11,11 @@ export default function Student() {
   const { id = "", userId = "" } = useParams(),
     { t, language } = useLanguage();
   const query = useResource(["student", id, userId], async () => {
-    const [classroom, students, tests] = await Promise.all([
+    const [classroom, student, tests] = await Promise.all([
       api.classroom(id),
-      api.members(id),
+      api.student(id, userId),
       api.studentTests(id, userId),
     ]);
-    const student = students.find((item) => item.userId === Number(userId));
-    if (!student)
-      throw new Error(t("This student is no longer in this class."));
     return { classroom, student, tests };
   });
   const sorting = useSort<StudentTest>(

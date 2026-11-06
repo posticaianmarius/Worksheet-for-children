@@ -1,18 +1,41 @@
 import "./auth.css";
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useLanguage, useSession } from "../../app/state";
-import { api, canTeach } from "../../shared/api";
+import { pendingWork } from "../assignments/DeliveryEntry";
+import { api, canTeach, ApiError } from "../../shared/api";
 import { Brand } from "../../shared/Brand";
 import { Button, ErrorNotice } from "../../shared/ui";
 export default function PublicEntry() {
   const { t } = useLanguage(),
     { user, refresh } = useSession(),
     navigate = useNavigate();
-  const [studentCode, setStudentCode] = useState(""),
+  const [qrCode] = useState(() => {
+    try {
+      return window.location.hash.startsWith("#student-code=")
+        ? decodeURIComponent(window.location.hash.slice(14))
+        : "";
+    } catch {
+      return "";
+    }
+  });
+  const qrStarted = useRef(false);
+  const [studentCode, setStudentCode] = useState(qrCode),
     [code, setCode] = useState(""),
-    [busy, setBusy] = useState(false),
+    [busy, setBusy] = useState(!!qrCode),
     [error, setError] = useState<unknown>(null);
+  useEffect(() => {
+    if (!qrCode || qrStarted.current) return;
+    qrStarted.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    void api
+      .studentLogin(qrCode)
+      .then(() => window.location.replace(pendingWork() ?? "/student"))
+      .catch((e) => {
+        setError(e);
+        setBusy(false);
+      });
+  }, [qrCode]);
   async function join() {
     if (busy) return;
     if (!studentCode.trim()) {
@@ -25,7 +48,7 @@ export default function PublicEntry() {
       if (!code.trim()) {
         await api.studentLogin(studentCode);
         await refresh();
-        navigate("/student", { replace: true });
+        navigate(pendingWork() ?? "/student", { replace: true });
         return;
       }
       const joined = await api.enterGame(studentCode, code);
@@ -36,7 +59,17 @@ export default function PublicEntry() {
         (await api.start(joined.assignmentId));
       navigate("/attempts/" + attempt.id);
     } catch (e) {
-      setError(e);
+      if (e instanceof ApiError && e.status === 409 && code.trim()) {
+        try {
+          await api.studentLogin(studentCode);
+          sessionStorage.setItem("playsheets.worksheet-choice", code.trim());
+          await refresh();
+          navigate("/student", { replace: true });
+          return;
+        } catch (error) {
+          setError(error);
+        }
+      } else setError(e);
     } finally {
       setBusy(false);
     }

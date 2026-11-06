@@ -1,0 +1,322 @@
+.space-switcher {
+  display: grid;
+  gap: 6px;
+  margin: 0 12px 18px;
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+.space-switcher select {
+  width: 100%;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+.space-name {
+  display: block;
+  margin: 0 18px 20px;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+.space-section {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.space-section h2 {
+  margin: 0 0 12px;
+}
+.space-section .form-stack {
+  max-width: 480px;
+}
+.directory-list {
+  display: grid;
+  gap: 10px;
+}
+.directory-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+}
+.directory-row > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.directory-row small {
+  display: block;
+  color: var(--color-muted);
+}
+.section-toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.section-toolbar > input {
+  max-width: 360px;
+}
+.section-toolbar label,
+.directory-row label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.row-menu {
+  position: relative;
+}
+.row-menu summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  min-width: 44px;
+  list-style: none;
+  border-radius: 8px;
+}
+.row-menu[open] > div {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  top: 100%;
+  background: var(--color-surface, #fff);
+  box-shadow: 0 8px 30px #19204422;
+  border: 1px solid var(--color-border);
+  padding: 8px;
+  min-width: 210px;
+  display: grid;
+  gap: 4px;
+  border-radius: 12px;
+}
+.row-menu .button {
+  justify-content: flex-start;
+  white-space: nowrap;
+}
+.directory-matches {
+  display: grid;
+  gap: 8px;
+}
+.directory-matches .button {
+  justify-content: space-between;
+}
+.student-preview-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.student-login-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  background: white;
+  color: #20283b;
+  break-inside: avoid;
+}
+.student-login-card h2,
+.student-login-card p {
+  margin: 0;
+}
+.student-login-card p {
+  font-size: 0.8rem;
+  max-width: 250px;
+}
+.student-login-code {
+  font-family: monospace;
+  font-size: 1.8rem;
+  letter-spacing: 0.12em;
+}
+.invitation-link {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  background: var(--color-primary-soft, #f7f6fc);
+  border-radius: 12px;
+  margin: 16px 0;
+}
+.class-tabs {
+  display: flex;
+  gap: 6px;
+  overflow: auto;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 24px;
+}
+.class-tabs a {
+  padding: 14px 18px;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  color: var(--color-muted);
+  text-decoration: none;
+}
+.class-tabs a[aria-current="page"] {
+  border-color: var(--color-primary, #614bd2);
+  color: var(--color-primary, #614bd2);
+  font-weight: 600;
+}
+.class-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.class-summary .panel {
+  padding: 24px;
+}
+.class-summary strong {
+  display: block;
+  font-size: 2rem;
+}
+.roster-mobile {
+  display: none;
+}
+.assignment-review {
+  display: grid;
+  gap: 16px;
+  background: var(--color-primary-soft, #f7f6fc);
+  padding: 20px;
+  border-radius: 12px;
+}
+.assignment-review dt {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.assignment-review dd {
+  margin: 4px 0 0;
+  font-weight: 600;
+}
+.class-overview-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.class-teachers {
+  margin-top: 24px;
+}
+.class-worksheet-list {
+  display: grid;
+  gap: 10px;
+}
+.class-worksheet-list .button {
+  justify-content: space-between;
+}
+.space-error {
+  padding: 12px;
+}
+@media (max-width: 700px) {
+  .directory-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+  .directory-row > .actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .space-section {
+    padding: 18px;
+  }
+  .roster-desktop {
+    display: none;
+  }
+  .roster-mobile {
+    display: grid;
+    gap: 12px;
+  }
+  .roster-mobile article {
+    padding: 18px;
+  }
+  .roster-mobile article > .actions {
+    margin-top: 14px;
+  }
+  .class-tabs a {
+    padding: 12px;
+  }
+  .class-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .class-summary .panel {
+    padding: 18px;
+  }
+}
+@media print {
+  body:has(.print-card-area) * {
+    visibility: hidden;
+  }
+  body:has(.print-card-area) .print-card-area,
+  body:has(.print-card-area) .print-card-area * {
+    visibility: visible;
+  }
+  .print-card-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .student-login-card {
+    border: 1px dashed #aaa;
+  }
+  .student-login-card img {
+    display: block;
+  }
+}
+
+.row-menu summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.roster-desktop.table-panel {
+  overflow: visible;
+}
+.directory-row > div,
+.space-section {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.directory-row > .actions {
+  flex-wrap: wrap;
+}
+.student-preview-row select {
+  min-width: 0;
+  width: 100%;
+}
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  body:has(.print-card-area) > *:not(:has(.print-card-area)) {
+    display: none !important;
+  }
+  body:has(.print-card-area) .dialog-viewport,
+  body:has(.print-card-area) .dialog {
+    position: static !important;
+    display: block;
+    overflow: visible;
+    max-height: none;
+    width: auto;
+    padding: 0;
+    transform: none;
+  }
+}
+
+.worksheet-choice {
+  display: grid;
+  text-align: left;
+  justify-content: stretch;
+}
+.worksheet-choice small {
+  color: var(--color-muted);
+}
+@media print {
+  body:has(.print-card-area) {
+    background: white;
+  }
+}

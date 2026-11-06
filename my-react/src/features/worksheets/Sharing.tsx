@@ -1,6 +1,9 @@
 import "./worksheets.css";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSpace } from "../spaces/SpaceContext";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import type { Worksheet } from "../../shared/types";
 import { Copy, Presentation, RefreshCw } from "lucide-react";
 import { useLanguage, useSession } from "../../app/state";
 import { api } from "../../shared/api";
@@ -31,6 +34,7 @@ function ShareContent({
   const { t } = useLanguage(),
     { user } = useSession(),
     client = useQueryClient();
+  const { context } = useSpace();
   const query = useResource(["share", worksheetId], () =>
     api.share(worksheetId),
   );
@@ -43,7 +47,10 @@ function ShareContent({
     setBusy(true);
     try {
       const result = await api.share(worksheetId, true);
-      client.setQueryData([user?.id, "share", worksheetId], result);
+      client.setQueryData(
+        [user?.id, context?.spaceId, "share", worksheetId],
+        result,
+      );
       setReplacing(false);
     } catch (e) {
       setError(e);
@@ -161,30 +168,50 @@ function AssignContent({
   classroomId?: string;
 }) {
   const { t } = useLanguage(),
+    navigate = useNavigate(),
     classes = useResource(["classes"], api.classes);
   const [classId, setClassId] = useState(classroomId ?? ""),
-    [student, setStudent] = useState("all"),
+    [mode, setMode] = useState("all"),
     [selected, setSelected] = useState<number[]>([]),
+    [title, setTitle] = useState(""),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState<unknown>(null);
-  const members = useResource(["members", classId], () =>
+    [error, setError] = useState<unknown>(null),
+    [preview, setPreview] = useState<{
+      revisionId: number;
+      worksheet: Worksheet;
+    } | null>(null);
+  const members = useResource(["assignment-members", classId], () =>
     classId ? api.members(classId) : Promise.resolve([]),
   );
-  async function assign() {
-    if (!classId || busy || (student === "selected" && !selected.length))
-      return;
+  const active = (members.data ?? []).filter((m) => !m.leftAt),
+    recipients =
+      mode === "all"
+        ? active
+        : active.filter((m) => selected.includes(m.userId));
+  async function review() {
     setBusy(true);
+    setError(null);
     try {
-      await api.assign(
-        worksheetId,
-        student === "all"
-          ? { classroomId: Number(classId) }
-          : {
-              classroomId: Number(classId),
-              userIds: student === "selected" ? selected : [Number(student)],
-            },
-      );
+      setPreview(await api.assignmentPreview(worksheetId));
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function assign() {
+    if (!preview || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.assign(worksheetId, {
+        classroomId: Number(classId),
+        ...(mode === "selected" ? { userIds: selected } : {}),
+        title: title.trim() || undefined,
+        revisionId: preview.revisionId,
+      });
       onClose();
+      navigate("/classes/" + classId + "?tab=assignments");
     } catch (e) {
       setError(e);
     } finally {
@@ -194,80 +221,135 @@ function AssignContent({
   return (
     <Modal
       open
+      title={t(preview ? "Review assignment" : "Choose recipients")}
       onClose={() => !busy && onClose()}
-      title={t("Assign worksheet")}
     >
       <ErrorNotice error={error} />
-      <Resource query={classes}>
-        {(items) => (
-          <div className="form-stack">
-            <label htmlFor="assign-class">{t("Class")}</label>
-            <select
-              id="assign-class"
-              value={classId}
-              onChange={(e) => {
-                setClassId(e.target.value);
-                setStudent("all");
-                setSelected([]);
-              }}
-            >
-              <option value="">—</option>
-              {items.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="assign-student">{t("Student")}</label>
-            <select
-              id="assign-student"
-              value={student}
-              disabled={!classId}
-              onChange={(e) => setStudent(e.target.value)}
-            >
-              <option value="all">{t("Whole class")}</option>
-              <option value="selected">{t("assignment.selected")}</option>
-              {members.data?.map((member) => (
-                <option key={member.userId} value={member.userId}>
-                  {member.name}
-                </option>
-              ))}
-            </select>
-            {student === "selected" && (
-              <fieldset className="recipient-selection">
-                <legend>{t("assignment.selected")}</legend>
-                {members.error && <ErrorNotice error={members.error} />}
-                {members.data?.map((member) => (
-                  <label className="check-field" key={member.userId}>
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(member.userId)}
-                      onChange={(event) =>
-                        setSelected((current) =>
-                          event.target.checked
-                            ? [...current, member.userId]
-                            : current.filter((id) => id !== member.userId),
-                        )
-                      }
-                    />
-                    {member.name}
-                  </label>
-                ))}
-              </fieldset>
+      {preview ? (
+        <div className="form-stack">
+          <dl className="assignment-review">
+            <div>
+              <dt>{t("Worksheet")}</dt>
+              <dd>{preview.worksheet.name}</dd>
+            </div>
+            <div>
+              <dt>{t("Class")}</dt>
+              <dd>
+                {classes.data?.find((c) => String(c.id) === classId)?.name}
+              </dd>
+            </div>
+            <div>
+              <dt>{t("Students")}</dt>
+              <dd>
+                {recipients.length} · {recipients.map((m) => m.name).join(", ")}
+              </dd>
+            </div>
+            <div>
+              <dt>{t("Activities")}</dt>
+              <dd>{preview.worksheet.items.length}</dd>
+            </div>
+          </dl>
+          <p className="muted">
+            {t(
+              "This saved version will be assigned. Later edits will not change it.",
             )}
+          </p>
+          <label htmlFor="delivery-title">
+            {t("Assignment title (optional)")}
+          </label>
+          <input
+            id="delivery-title"
+            value={title}
+            maxLength={150}
+            placeholder={t("e.g. Monday number practice")}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <div className="actions">
+            <Button disabled={busy} onClick={() => setPreview(null)}>
+              {t("Back")}
+            </Button>
             <Button
               variant="primary"
-              disabled={
-                !classId || (student === "selected" && !selected.length)
-              }
               busy={busy}
+              disabled={!preview.worksheet.items.length || !recipients.length}
               onClick={() => void assign()}
             >
-              {t("Assign")}
+              {t("Assign worksheet")}
             </Button>
           </div>
-        )}
-      </Resource>
+        </div>
+      ) : (
+        <Resource query={classes}>
+          {(items) => (
+            <div className="form-stack">
+              <label htmlFor="assign-class">{t("Class")}</label>
+              <select
+                id="assign-class"
+                value={classId}
+                onChange={(e) => {
+                  setClassId(e.target.value);
+                  setSelected([]);
+                }}
+              >
+                <option value="">{t("Choose class")}</option>
+                {items
+                  .filter((c) => !c.archivedAt)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+              <Resource query={members}>
+                {() => (
+                  <>
+                    <label htmlFor="recipient-mode">{t("Recipients")}</label>
+                    <select
+                      id="recipient-mode"
+                      value={mode}
+                      onChange={(e) => setMode(e.target.value)}
+                    >
+                      <option value="all">{t("Whole class")}</option>
+                      <option value="selected">
+                        {t("assignment.selected")}
+                      </option>
+                    </select>
+                    {mode === "selected" && (
+                      <fieldset className="recipient-selection">
+                        <legend>{t("assignment.selected")}</legend>
+                        {active.map((m) => (
+                          <label className="check-field" key={m.userId}>
+                            <input
+                              type="checkbox"
+                              checked={selected.includes(m.userId)}
+                              onChange={(e) =>
+                                setSelected((current) =>
+                                  e.target.checked
+                                    ? [...current, m.userId]
+                                    : current.filter((id) => id !== m.userId),
+                                )
+                              }
+                            />
+                            {m.name}
+                          </label>
+                        ))}
+                      </fieldset>
+                    )}
+                  </>
+                )}
+              </Resource>
+              <Button
+                variant="primary"
+                busy={busy}
+                disabled={!classId || !recipients.length}
+                onClick={() => void review()}
+              >
+                {t("Review assignment")}
+              </Button>
+            </div>
+          )}
+        </Resource>
+      )}
     </Modal>
   );
 }

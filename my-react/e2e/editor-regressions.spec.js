@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 
 async function mockPlatform(
@@ -50,6 +51,20 @@ async function mockPlatform(
       const request = route.request();
       const path = new URL(request.url()).pathname;
       const method = request.method();
+      if (path === "/api/auth/context") {
+        const contextRoute = {
+          fulfill: (options) =>
+            route.fulfill({ ...options, json: spaceContextFor(options.json) }),
+        };
+        return contextRoute.fulfill({
+          json: {
+            id: 1,
+            role: "TEACHER",
+            name: "Teacher",
+            email: "teacher@example.com",
+          },
+        });
+      }
       if (path === "/api/auth/me")
         return route.fulfill({
           json: {

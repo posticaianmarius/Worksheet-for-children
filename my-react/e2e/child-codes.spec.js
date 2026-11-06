@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
@@ -49,6 +50,11 @@ test("children enter codes, resume unfinished work and finish without signup", a
       const reply = (json, status = 200) => route.fulfill({ status, json });
       if (path === "/api/auth/csrf")
         return reply({ headerName: "X-XSRF-TOKEN", token: "test" });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        return user ? reply(user) : reply({ message: "Please log in." }, 401);
+      }
       if (path === "/api/auth/me")
         return user ? reply(user) : reply({ message: "Please log in." }, 401);
       if (path === "/api/play/join") {
@@ -105,10 +111,12 @@ test("children enter codes, resume unfinished work and finish without signup", a
   await page.setViewportSize({ width: 390, height: 844 });
 });
 
-test("teachers manage child codes, start tests and navigate real results", async ({
+test("teachers view results, print private cards and keep former students in history", async ({
   page,
 }) => {
-  let students = [];
+  let students = [
+    { userId: 2, studentId: 2, name: "Ana Maria", studentCode: "ABCD2345" },
+  ];
   const tests = [
     {
       attemptId: 40,
@@ -129,8 +137,15 @@ test("teachers manage child codes, start tests and navigate real results", async
       const reply = (json, status = 200) => route.fulfill({ status, json });
       if (path === "/api/auth/csrf")
         return reply({ headerName: "X-XSRF-TOKEN", token: "test" });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        return reply(teacher);
+      }
       if (path === "/api/auth/me") return reply(teacher);
       if (path === "/api/classes/10") return reply(classroom);
+      if (path === "/api/spaces/1/students/2/credential")
+        return reply({ studentId: 2, name: "Ana Maria", code: "ABCD2345" });
       if (path === "/api/worksheets") return reply([worksheet]);
       if (path === "/api/classes/10/members") {
         if (method === "POST") {
@@ -150,9 +165,10 @@ test("teachers manage child codes, start tests and navigate real results", async
       }
       if (path === "/api/classes/10/members/2") {
         if (method === "DELETE") {
-          students = [];
+          students[0].leftAt = "2026-11-01T12:00:00Z";
           return route.fulfill({ status: 204 });
         }
+        if (method === "GET") return reply(students[0]);
         students[0].name = route.request().postDataJSON().name;
         return reply(students[0]);
       }
@@ -175,37 +191,39 @@ test("teachers manage child codes, start tests and navigate real results", async
       return reply({ message: `Unexpected API request: ${path}` }, 404);
     },
   );
-  await page.goto("/classes/10");
-  await page.getByRole("button", { name: "Adaugă elev" }).click();
-  await page.getByLabel("Numele elevului").fill("Ana");
-  await page.getByRole("button", { name: "Salvează" }).click();
-  await expect(page.getByText("ABCD2345", { exact: true })).toBeVisible();
-  await page.reload();
-  await expect(
-    page.getByRole("link", { name: "Ana", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Redenumește" }).click();
-  await page.getByLabel("Numele elevului").fill("Ana Maria");
-  await page.getByRole("button", { name: "Salvează" }).click();
+  await page.goto("/classes/10?tab=students");
   await expect(
     page.getByRole("link", { name: "Ana Maria", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Începe un test" }).click();
-  await page.getByRole("button", { name: "Odd or even", exact: true }).click();
-  await expect(page.getByText("EFGH6789", { exact: true })).toBeVisible();
+  await expect(page.getByText("ABCD2345", { exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Ana Maria", exact: true }).click();
   await page.getByRole("link", { name: "Odd or even", exact: true }).click();
-  await expect(page.getByText("Activitatea 1", { exact: true })).toBeVisible();
   await expect(page.getByText("1 / 1", { exact: true }).last()).toBeVisible();
-  await page.getByRole("link", { name: "Elevi", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/classes/10?tab=students");
+  await page.locator(".roster-mobile summary").click();
+  await page
+    .locator(".roster-mobile")
+    .getByRole("button", { name: "Card de acces", exact: true })
+    .click();
+  await expect(page.getByText("ABCD2345", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Ana Maria", exact: true }),
+    page.getByRole("img", { name: "Scanează pentru autentificare" }),
   ).toBeVisible();
-
-  await page.getByRole("button", { name: "Șterge", exact: true }).click();
-  await page.getByRole("button", { name: "Șterge", exact: true }).click();
+  await page.getByRole("button", { name: "Închide", exact: true }).click();
+  await page
+    .locator(".roster-mobile")
+    .getByRole("button", { name: "Elimină din clasă", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Elimină din clasă", exact: true })
+    .click();
   await expect(
-    page.getByRole("link", { name: "Ana Maria", exact: true }),
+    page.locator(".roster-mobile").getByText("Ana Maria", { exact: true }),
   ).toHaveCount(0);
+  await page.getByLabel("Arată foștii elevi").check();
+  await expect(
+    page.locator(".roster-mobile").getByText("Ana Maria", { exact: true }),
+  ).toBeVisible();
 });

@@ -1,5 +1,42 @@
 export type Id = number | string;
 export type Role = "USER" | "TEACHER" | "ADMIN";
+export interface Space {
+  id: number;
+  name: string;
+  owner: boolean;
+  manageStudentAccess: boolean;
+}
+export interface SpaceStudent {
+  id: number;
+  userId: number;
+  name: string;
+  archivedAt: string | null;
+}
+export interface SpaceContext {
+  spaceId: number | null;
+  spaces: Space[];
+  student: SpaceStudent | null;
+  owner: boolean;
+  manageStudentAccess: boolean;
+}
+export interface TeamMember {
+  userId: number;
+  name: string;
+  email: string;
+  owner: boolean;
+  manageStudentAccess: boolean;
+}
+export interface Invitation {
+  id: number;
+  expiresAt: string;
+  usedAt: string | null;
+  revokedAt: string | null;
+}
+export interface AccessCard {
+  studentId: number;
+  name: string;
+  code: string;
+}
 export interface User {
   id: number;
   name: string;
@@ -88,10 +125,16 @@ export interface Worksheet {
 export interface Classroom {
   id: number;
   name: string;
+  teacherId?: number;
+  spaceId?: number;
+  archivedAt?: string | null;
+  studentCount?: number;
   teacherName?: string;
   joinCode?: string;
 }
 export interface Member {
+  studentId?: number;
+  leftAt?: string | null;
   userId: number;
   name: string;
   email?: string;
@@ -104,6 +147,8 @@ export interface Member {
   teacherManaged?: boolean;
 }
 export interface Assignment {
+  deliveryTitle?: string | null;
+  classroomName?: string | null;
   batchId?: string;
   id: number;
   userId: number;
@@ -146,6 +191,7 @@ export interface StudentTest {
   startedAt?: string;
 }
 export interface ReportRow {
+  deliveryTitle?: string | null;
   batchId?: string;
   assignmentId: number;
   classroomId: number | null;

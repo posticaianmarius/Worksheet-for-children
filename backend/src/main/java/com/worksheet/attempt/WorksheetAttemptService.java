@@ -86,7 +86,10 @@ public class WorksheetAttemptService {
     public List<WorksheetAttemptResponse> getAssigned(Long assignmentId, User actor) {
         WorksheetAssignment assignment = requireReadableAssignment(assignmentId, actor);
         return attempts.findByAssignment_IdOrderByStartedAtDesc(assignment.getId())
-            .stream().map(this::response).toList();
+            .stream()
+            .filter(attempt -> actor.getRole()!=UserRole.USER || assignment.getRevokedAt()==null
+                || attempt.getStatus()==AttemptStatus.COMPLETED)
+            .map(this::response).toList();
     }
 
     @Transactional

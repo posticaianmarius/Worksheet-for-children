@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 
 async function setup(page, { student = false } = {}) {
@@ -107,6 +108,15 @@ async function setup(page, { student = false } = {}) {
       const url = new URL(request.url());
       const path = url.pathname;
       const reply = (json, status = 200) => route.fulfill({ json, status });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        return reply({
+          id: student ? 6 : 1,
+          name: "Teacher",
+          role: student ? "USER" : "TEACHER",
+        });
+      }
       if (path === "/api/auth/me")
         return reply({
           id: student ? 6 : 1,
@@ -137,12 +147,16 @@ async function setup(page, { student = false } = {}) {
       if (path === "/api/classes") return reply(classes);
       if (path === "/api/classes/2") return reply(classes[0]);
       if (path === "/api/classes/2/members") return reply(students);
+      if (path === "/api/classes/2/members/6")
+        return reply(students.find((s) => s.userId === 6));
       if (path === "/api/classes/2/members/6/tests") return reply(tests);
       if (path === "/api/worksheets") return reply([]);
       if (path === "/api/assignments/report")
         return reply(
           rows.filter(
-            (row) => url.searchParams.has("includeRemoved") || !row.removedAt,
+            (row) =>
+              url.searchParams.get("includeRemoved") === "true" ||
+              !row.removedAt,
           ),
         );
       return reply({ message: `Unexpected request: ${path}` }, 404);
@@ -170,26 +184,22 @@ async function setup(page, { student = false } = {}) {
   };
 }
 
-test("class roster sorts names and numeric metrics, keeping missing results last", async ({
+test("class roster sorts names and searches without exposing login codes or grades", async ({
   page,
 }) => {
   await setup(page);
-  await page.goto("/classes/2");
-  const names = page.locator(".student-name-button");
+  await page.goto("/classes/2?tab=students");
+  const names = page.locator(".roster-desktop tbody td:first-child a");
   await expect(names).toHaveText(["Ana", "Dan", "Ștefan"]);
-  await page.getByRole("button", { name: /^Name \/ code/ }).click();
+  await page.getByRole("button", { name: "Student", exact: true }).click();
   await expect(names).toHaveText(["Ștefan", "Dan", "Ana"]);
-  await page.getByRole("button", { name: /^Last test/ }).click();
-  await expect(names).toHaveText(["Ana", "Ștefan", "Dan"]);
-  await page.getByRole("button", { name: /^Last test/ }).click();
-  await expect(names).toHaveText(["Ștefan", "Ana", "Dan"]);
-  await page.getByRole("button", { name: /^Average/ }).click();
-  await expect(names).toHaveText(["Ștefan", "Ana", "Dan"]);
-  await page.getByRole("button", { name: /^Average/ }).click();
-  await expect(names).toHaveText(["Ana", "Ștefan", "Dan"]);
-  await expect(
-    page.getByRole("columnheader", { name: /^Average/ }),
-  ).toHaveAttribute("aria-sort", "descending");
+  await page.getByRole("searchbox", { name: "Search students" }).fill("an");
+  await expect(names).toHaveText(["Ștefan", "Dan", "Ana"]);
+  await page.getByRole("searchbox", { name: "Search students" }).fill("Ana");
+  await expect(names).toHaveText(["Ana"]);
+  await expect(page.getByRole("columnheader", { name: "Average" })).toHaveCount(
+    0,
+  );
 });
 
 test("a child's tests sort by name, normalized result and timestamp", async ({
@@ -244,13 +254,13 @@ test("class deletion supports cancel, error recovery and persists after reload",
   const state = await setup(page);
   await page.goto("/classes");
   await page
-    .getByRole("button", { name: "Delete class Class A", exact: true })
+    .getByRole("button", { name: "Archive class Class A", exact: true })
     .click();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(state.mutations).toHaveLength(0);
   state.fail(true);
   await page
-    .getByRole("button", { name: "Delete class Class A", exact: true })
+    .getByRole("button", { name: "Archive class Class A", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Delete", exact: true })
@@ -268,7 +278,7 @@ test("class deletion supports cancel, error recovery and persists after reload",
   ).toBeVisible();
   state.fail(false);
   await page
-    .getByRole("button", { name: "Delete class Class A", exact: true })
+    .getByRole("button", { name: "Archive class Class A", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Delete", exact: true })
@@ -366,7 +376,6 @@ test("sorting controls remain usable on phones", async ({ page }, testInfo) => {
   await setup(page);
   await page.setViewportSize({ width: 390, height: 844 });
   for (const [path, column] of [
-    ["/classes/2", "Average"],
     ["/classes/2/children/6", "Result"],
     ["/assignments/classes/2/worksheets/3", "Score"],
   ]) {

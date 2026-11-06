@@ -25,6 +25,9 @@ public class StudentDirectoryService {
     }
     public record Student(Long id,Long userId,String name,Instant archivedAt) {}
     public Student response(SpaceStudent s) { return new Student(s.id,s.userId,s.name,s.archivedAt); }
+    public Map<Long,SpaceStudent> profiles(List<Long> ids) {
+        return access.students.findAllById(ids).stream().collect(java.util.stream.Collectors.toMap(s -> s.id,s -> s));
+    }
     public List<Student> list(Long spaceId,User actor) {
         access.teacher(spaceId,actor);
         return access.students.findBySpaceIdOrderByName(spaceId).stream().map(this::response).toList();

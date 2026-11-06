@@ -19,26 +19,34 @@ import { deliveries } from "./deliveries";
 export default function TeacherAssignments({
   classroomId,
   embedded = false,
+  readOnly = false,
 }: {
   classroomId?: string;
   embedded?: boolean;
+  readOnly?: boolean;
 }) {
   const { t, language } = useLanguage();
-  const [history, setHistory] = useState(false),
+  const [history, setHistory] = useState(readOnly),
     [choose, setChoose] = useState(false),
     [worksheet, setWorksheet] = useState<number | null>(null),
     [error, setError] = useState<unknown>(null);
-  const query = useResource(["deliveries", history], () => api.report(history));
-  const sheets = useResource(["worksheets"], api.worksheets);
+  const query = useResource(["deliveries", history, classroomId], () =>
+    api.report(history, classroomId),
+  );
+  const sheets = useResource(["assign-worksheets", choose], () =>
+    choose ? api.worksheets() : Promise.resolve([]),
+  );
   const actions = (
     <div className="actions">
       <Button onClick={() => setHistory((value) => !value)}>
         {t(history ? "assignment.active" : "assignment.closed")}
       </Button>
-      <Button variant="primary" onClick={() => setChoose(true)}>
-        <Plus size={17} />
-        {t("Assign worksheet")}
-      </Button>
+      {!readOnly && (
+        <Button variant="primary" onClick={() => setChoose(true)}>
+          <Plus size={17} />
+          {t("Assign worksheet")}
+        </Button>
+      )}
     </div>
   );
   const content = (
@@ -64,7 +72,12 @@ export default function TeacherAssignments({
               {groups.map((group) => (
                 <article className="panel delivery-card" key={group.id}>
                   <div>
-                    <h2>{group.first.worksheetName}</h2>
+                    <h2>
+                      {group.first.deliveryTitle || group.first.worksheetName}
+                    </h2>
+                    {group.first.deliveryTitle && (
+                      <p>{group.first.worksheetName}</p>
+                    )}
                     <p className="muted">
                       {group.first.classroomName ?? t("Direct assignments")} ·{" "}
                       {t("Version {number}", {
@@ -98,9 +111,22 @@ export default function TeacherAssignments({
                     >
                       {t("Results")}
                     </Link>
+                    {!group.removed && group.first.batchId && (
+                      <Button
+                        onClick={() =>
+                          void navigator.clipboard
+                            .writeText(
+                              window.location.origin + "/work/" + group.id,
+                            )
+                            .catch(setError)
+                        }
+                      >
+                        {t("Copy assignment link")}
+                      </Button>
+                    )}
                     {group.removed ? (
                       <Status value="REVOKED" />
-                    ) : (
+                    ) : readOnly ? null : (
                       <Confirm
                         title={t("assignment.closeTitle")}
                         confirmLabel={t("assignment.close")}

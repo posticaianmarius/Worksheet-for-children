@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 const schema = {
   type: "object",
@@ -92,6 +93,20 @@ async function setup(page, { role = "TEACHER", unknown = false } = {}) {
         path = new URL(request.url()).pathname,
         method = request.method(),
         reply = (json) => route.fulfill({ json });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        const contextRoute = {
+          fulfill: (options) =>
+            route.fulfill({ ...options, json: spaceContextFor(options.json) }),
+        };
+        return user
+          ? reply(user)
+          : contextRoute.fulfill({
+              status: 401,
+              json: { message: "Please log in." },
+            });
+      }
       if (path === "/api/auth/me")
         return user
           ? reply(user)

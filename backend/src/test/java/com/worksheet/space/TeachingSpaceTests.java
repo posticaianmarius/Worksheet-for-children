@@ -21,6 +21,7 @@ class TeachingSpaceTests {
  @Autowired MockMvc mvc;
  @Autowired MiniGameDefinitionRepository games;
  @Autowired SpaceInvitationRepository invitations;
+ @Autowired StudentCredentialRepository credentials;
  int counter;
  record Account(MockHttpSession session,long id) {}
  Account signup(String name) throws Exception {
@@ -46,6 +47,7 @@ class TeachingSpaceTests {
   postAs(owner,"/api/classes/"+b+"/members","{\"studentId\":"+profile+"}");
   var card=postAs(owner,"/api/spaces/"+space+"/students/"+profile+"/credential","{}");
   String code=string(card,"$.code");
+  var alias=new StudentCredential(); alias.studentId=profile; alias.code="ALIS2345"; credentials.saveAndFlush(alias);
   var login=mvc.perform(post("/api/play/login").contentType("application/json").content("{\"studentCode\":\""+code+"\"}")).andExpect(status().isOk()).andReturn();
   var child=(MockHttpSession)login.getRequest().getSession();
   mvc.perform(get("/api/classes").session(child)).andExpect(jsonPath("$",hasSize(2)));
@@ -55,6 +57,7 @@ class TeachingSpaceTests {
   postAs(owner,"/api/spaces/"+space+"/students/"+profile+"/credential/rotate","{}");
   mvc.perform(get("/api/auth/me").session(child)).andExpect(status().isUnauthorized());
   mvc.perform(post("/api/play/login").contentType("application/json").content("{\"studentCode\":\""+code+"\"}")).andExpect(status().isNotFound());
+  mvc.perform(post("/api/play/login").contentType("application/json").content("{\"studentCode\":\"ALIS2345\"}")).andExpect(status().isNotFound());
   postAs(owner,"/api/classes/"+a+"/members","{\"studentId\":"+profile+"}");
   mvc.perform(get("/api/classes/"+a+"/members/"+user).session(owner.session)).andExpect(jsonPath("$.userId").value(user));
  }
@@ -99,5 +102,37 @@ class TeachingSpaceTests {
   postAs(owner,"/api/spaces/"+space+"/students","{\"name\":\"Alex\"}");
   mvc.perform(post("/api/spaces/"+space+"/students").session(owner.session).contentType("application/json").content("{\"name\":\"alex\"}")).andExpect(status().isConflict());
   postAs(owner,"/api/spaces/"+space+"/students","{\"name\":\"Alex\",\"allowDuplicate\":true}");
+ }
+ @Test void studentArchivalDisablesSessionsAndSpaceHeadersCannotChangeStudentIdentity() throws Exception {
+  var owner=signup("Owner");var other=signup("Other");long space=space(owner),otherSpace=space(other),classroom=classroom(owner,"Class");
+  var profile=postAs(owner,"/api/classes/"+classroom+"/members","{\"name\":\"Alex\"}");
+  long student=number(profile,"$.studentId");
+  String code=string(postAs(owner,"/api/spaces/"+space+"/students/"+student+"/credential","{}"),"$.code");
+  var login=mvc.perform(post("/api/play/login").contentType("application/json").content("{\"studentCode\":\""+code+"\"}")).andExpect(status().isOk()).andReturn();
+  var session=(MockHttpSession)login.getRequest().getSession();
+  mvc.perform(get("/api/assignments").session(session).header("X-Space-Id",otherSpace)).andExpect(status().isNotFound());
+  mvc.perform(post("/api/auth/context").session(session).contentType("application/json").content("{\"spaceId\":"+otherSpace+"}")).andExpect(status().isNotFound());
+  mvc.perform(patch("/api/spaces/"+space+"/students/"+student).session(owner.session).contentType("application/json").content("{\"archive\":true}")).andExpect(status().isOk());
+  mvc.perform(get("/api/auth/me").session(session)).andExpect(status().isUnauthorized());
+  mvc.perform(post("/api/play/login").contentType("application/json").content("{\"studentCode\":\""+code+"\"}")).andExpect(status().isNotFound());
+ }
+ @Test void coTeacherAssignmentUsesReviewedRevisionAndOwnerCannotReadPrivateDraft() throws Exception {
+  var owner=signup("Owner");var co=signup("Co teacher");long space=space(owner),classroom=classroom(owner,"Class");
+  invite(owner,co,space);
+  postAs(owner,"/api/classes/"+classroom+"/teachers","{\"userId\":"+co.id+"}");
+  postAs(owner,"/api/classes/"+classroom+"/members","{\"name\":\"Alex\"}");
+  long worksheet=number(postAs(co,"/api/worksheets","{\"name\":\"Reviewed version\"}"),"$.id");
+  var game=games.save(new MiniGameDefinition("Test","frozen-"+java.util.UUID.randomUUID(),JsonNodeFactory.instance.objectNode(),true));
+  postAs(co,"/api/worksheets/"+worksheet+"/items","{\"miniGameId\":"+game.getId()+",\"orderIndex\":1,\"configuration\":{}}");
+  long revision=number(postAs(co,"/api/worksheets/"+worksheet+"/assignments/preview","{}"),"$.revisionId");
+  mvc.perform(put("/api/worksheets/"+worksheet).session(co.session).contentType("application/json").content("{\"name\":\"Later draft\"}")).andExpect(status().isOk());
+  var result=postAs(co,"/api/worksheets/"+worksheet+"/assignments","{\"classroomId\":"+classroom+",\"revisionId\":"+revision+"}");
+  long assignment=number(result,"$[0].id");
+  mvc.perform(get("/api/assignments/"+assignment).session(owner.session)).andExpect(status().isOk()).andExpect(jsonPath("$.worksheet.name").value("Reviewed version"));
+  mvc.perform(get("/api/worksheets/"+worksheet).session(owner.session)).andExpect(status().isNotFound());
+ }
+ @Test void newPageDeepLinksArePublicButTheirApisStillRequireAuthentication() throws Exception {
+  for(String route:java.util.List.of("/space","/students","/invite","/work/00000000-0000-0000-0000-000000000001")) mvc.perform(get(route)).andExpect(status().isOk());
+  mvc.perform(get("/api/spaces")).andExpect(status().isUnauthorized());
  }
 }

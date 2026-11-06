@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { useSpace } from "../features/spaces/SpaceContext";
 import { useSession } from "../app/state";
 import { ErrorNotice, Loading } from "./ui";
 export function useResource<T>(key: unknown[], loader: () => Promise<T>) {
   const { user } = useSession();
-  return useQuery({ queryKey: [user?.id, ...key], queryFn: loader });
+  const { context } = useSpace();
+  return useQuery({
+    queryKey: [user?.id, context?.spaceId, ...key],
+    queryFn: loader,
+  });
 }
 export function Resource<T>({
   query,

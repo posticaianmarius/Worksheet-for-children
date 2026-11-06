@@ -7,6 +7,7 @@ This backend is one Spring Boot modular monolith backed by PostgreSQL. Editable 
 ```text
 com.worksheet
 ├── auth                 users, roles, sessions, admin bootstrap/API
+├── space                teaching teams, directory, invitations, credentials and scoped authorization
 ├── classroom            classrooms and membership lifecycle
 ├── minigame             dynamic catalog, versions, schemas and asset links
 ├── worksheet            editable worksheet drafts and items
@@ -34,7 +35,7 @@ auth_users (USER / TEACHER / ADMIN)
   │              └──< worksheet_revision_item (frozen game + configuration)
   │                      └──< worksheet_attempt
   │                              └──< worksheet_attempt_item_result
-  ├──< classroom (teacher-owned)
+  ├──< classroom (space-scoped, with lead and co-teachers)
   │      └──< classroom_member >── USER
   └── worksheet_assignment
           ├── one assigned USER
@@ -47,7 +48,7 @@ mini_game_definition (type + version + JSON Schemas)
   └──< mini_game_definition_asset >── mini_game_asset
 ```
 
-Only `worksheet` stores worksheet ownership. An assignment derives its worksheet and teacher through `worksheet_revision -> worksheet -> auth_users`; it does not duplicate those foreign keys. Child access is checked through these parent relationships.
+Worksheet ownership stays private. Assignment content derives from its immutable revision; result authorization uses the teaching-space/class policy rather than source ownership. V25 adds delivery records, explicit space scope, teacher memberships and scoped student identities. See [ARCHITECTURE.md](../ARCHITECTURE.md) for the permission matrix and migration rules.
 
 Worksheet and worksheet-item creation, updates and deletion require a `TEACHER` or
 `ADMIN` session, together with the existing ownership checks. Child (`USER`) sessions
@@ -331,3 +332,12 @@ PostgreSQL scripts, so duplicate versions and invalid filenames fail even withou
 Hibernate schema validation, HTTP startup, a populated V13-to-latest upgrade, and a populated
 V19-to-latest upgrade that preserves worksheet shares. PostgreSQL integration tests are
 skipped with an explicit JUnit skip when Docker is unavailable; start Docker to run all checks.
+
+
+## Teaching spaces (V25)
+
+Teacher UI resources include `/api/spaces`, `/api/auth/context`, shared students, expiring invitations, and delegated credential operations. Requests use a validated `X-Space-Id`; student code sessions cannot change space. Existing `/api/auth/me` and legacy assignment/class routes remain compatible adapters. Student codes are no longer returned by the roster. Dedicated code endpoints require owner/delegated access and invalidate old sessions on rotation.
+
+Assignment preview at `POST /api/worksheets/{id}/assignments/preview` returns `{revisionId, worksheet}`. Pass `revisionId` and optional `title` to assignment creation to assign the reviewed snapshot. `/api/assignments/batches/{batchId}` returns the authorized delivery; report requests accept `classroomId` for scoped queries. Completed history remains readable after closure/removal; unfinished work cannot be resumed.
+
+Run `./mvnw verify` (Windows: `mvnw.cmd verify`) for unit tests plus populated PostgreSQL migration tests. Docker is required for the PostgreSQL suites. Never reset an existing database to apply this migration; take a backup first.

@@ -1,4 +1,5 @@
 import "./auth.css";
+import { pendingInvitation, clearInvitation } from "../spaces/Invitation";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
@@ -29,15 +30,25 @@ export default function AuthPage() {
     setError(null);
     try {
       const user = signup
-        ? await api.signup(name.trim(), email.trim(), password)
+        ? await api.signup(
+            name.trim(),
+            email.trim(),
+            password,
+            pendingInvitation(),
+          )
         : await api.login(email.trim(), password);
+      const invited = signup && !!pendingInvitation();
+      if (invited) clearInvitation();
       await refresh();
       const from = (state as { from?: string } | null)?.from;
       const safe =
         from?.startsWith("/") && !from.startsWith("//") ? from : undefined;
-      navigate(safe ?? (canTeach(user) ? "/home" : "/student"), {
-        replace: true,
-      });
+      navigate(
+        (invited ? "/home" : safe) ?? (canTeach(user) ? "/home" : "/student"),
+        {
+          replace: true,
+        },
+      );
     } catch (e) {
       setError(e);
     } finally {

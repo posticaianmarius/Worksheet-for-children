@@ -191,3 +191,12 @@ reconciliation; do not delete the database or its migration history to bypass th
 
 See [backend documentation](backend/README.md) for architecture, API configuration,
 and migration details, and [task image documentation](backend/TASK_IMAGES.md) for image APIs.
+
+
+## Teaching spaces and classrooms
+
+PlaySheets supports individual teachers and shared teaching teams. Space owners invite teachers, assign class co-teachers, and delegate student login-card permissions. The Students directory reuses one profile across classes; children use one private code or QR login for all their classes in that space.
+
+Class pages have Overview, Students, Assignments and Progress tabs. Assign worksheets through recipient selection and a frozen-version review. Closing work or archiving a class preserves completed results. Worksheet drafts stay private to their author.
+
+Existing accounts, classes and history migrate through Flyway V25 without resetting data. Joining a team keeps existing personal classes separate. Back up a populated database before upgrading. See [ARCHITECTURE.md](ARCHITECTURE.md) for permissions, migration details, and current release boundaries.

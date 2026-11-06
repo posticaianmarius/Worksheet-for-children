@@ -147,21 +147,47 @@ test("real backend: all six editors persist non-default settings and a class com
     .getByRole("dialog")
     .getByRole("button", { name: "New class", exact: true })
     .click();
-  await page.getByRole("button", { name: "Add student", exact: true }).click();
-  await page.getByLabel("Student name", { exact: true }).fill("Alex");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  const studentCode = await page
-    .locator(".student-access-code code")
-    .innerText();
+  await expect(page).toHaveURL(/\/classes\/\d+$/);
   const classroomPath = new URL(page.url()).pathname;
-  await page.getByRole("button", { name: "Add student", exact: true }).click();
-  await page.getByLabel("Student name", { exact: true }).fill("Maria");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  await page.getByRole("button", { name: "Start a test", exact: true }).click();
+  await page.getByRole("button", { name: "Add students", exact: true }).click();
+  await page.getByLabel("Student names, one per line").fill("Alex\nMaria");
   await page
-    .getByRole("button", { name: "One little discovery", exact: true })
+    .getByRole("button", { name: "Review students", exact: true })
     .click();
-  await expect(page.locator(".test-code-banner strong")).not.toBeEmpty();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Add students", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const roster = await (
+    await page.request.get("/api" + classroomPath + "/members")
+  ).json();
+  const alexIdentity = roster.find((s) => s.name === "Alex");
+  await page.goto(classroomPath + "?tab=students");
+  await page
+    .locator("tr")
+    .filter({ hasText: "Alex" })
+    .locator("summary")
+    .click();
+  await page.getByRole("button", { name: "Login card", exact: true }).click();
+  const studentCode = await page.locator(".student-login-code").innerText();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.goto(classroomPath);
+  await page
+    .getByRole("button", { name: "Assign worksheet", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /One little discovery/ })
+    .click();
+  await page
+    .getByRole("button", { name: "Review assignment", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Assign worksheet", exact: true })
+    .click();
+  await expect(page.locator(".delivery-card")).toHaveCount(1);
 
   const child = await browser.newContext();
   const childPage = await child.newPage();
@@ -203,11 +229,7 @@ test("real backend: all six editors persist non-default settings and a class com
   } finally {
     await child.close();
   }
-  await page.reload();
-  await expect(
-    page.locator(".student-block").getByText("100%", { exact: true }).first(),
-  ).toBeVisible();
-  await page.getByRole("link", { name: "Alex", exact: true }).click();
+  await page.goto(classroomPath + "/children/" + alexIdentity.userId);
   await page
     .getByRole("link", { name: "One little discovery", exact: true })
     .click();
@@ -215,21 +237,20 @@ test("real backend: all six editors persist non-default settings and a class com
     "1 / 1",
   );
   const savedAttempt = new URL(page.url()).pathname.split("/").at(-1);
-  await page.goto(classroomPath);
-  const alex = page
-    .getByRole("row")
-    .filter({ has: page.getByRole("link", { name: "Alex", exact: true }) });
-  await alex.getByRole("button", { name: "Replace code", exact: true }).click();
+  await page.goto(classroomPath + "?tab=students");
   await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Replace code", exact: true })
+    .locator("tr")
+    .filter({ hasText: "Alex" })
+    .locator("summary")
     .click();
-  await expect(alex.locator(".student-access-code code")).not.toHaveText(
-    studentCode,
-  );
-  const replacement = await alex
-    .locator(".student-access-code code")
-    .innerText();
+  await page.getByRole("button", { name: "Login card", exact: true }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", { name: "Replace login code", exact: true })
+    .click();
+  await expect(page.locator(".student-login-code")).not.toHaveText(studentCode);
+  const replacement = await page.locator(".student-login-code").innerText();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   const checkContext = await browser.newContext();
   try {
     const checkPage = await checkContext.newPage();
@@ -268,7 +289,7 @@ test("real backend: all six editors persist non-default settings and a class com
   await page
     .getByRole("link", { name: "Student access cards", exact: true })
     .click();
-  await expect(page.locator(".access-card")).toHaveCount(2);
+  await expect(page.locator(".student-login-card")).toHaveCount(2);
   await page.emulateMedia({ media: "print" });
   await expect(page.locator(".sidebar")).not.toBeVisible();
   await page.screenshot({
@@ -285,9 +306,15 @@ test("real backend: all six editors persist non-default settings and a class com
     .getByRole("dialog")
     .getByRole("button", { name: "One little discovery", exact: true })
     .click();
-  await page.getByLabel("Student", { exact: true }).selectOption("selected");
+  await page.getByLabel("Recipients", { exact: true }).selectOption("selected");
   await page.getByLabel("Maria", { exact: true }).check();
-  await page.getByRole("button", { name: "Assign", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Review assignment", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Assign worksheet", exact: true })
+    .click();
   await expect(page.locator(".delivery-card")).toHaveCount(2);
   await page.screenshot({
     path: test.info().outputPath("teacher-assignments.png"),

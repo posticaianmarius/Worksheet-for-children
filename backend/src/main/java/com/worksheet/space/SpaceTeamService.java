@@ -29,15 +29,17 @@ public class SpaceTeamService {
         member.manageStudentAccess=permitted;
     }
     public void transfer(Long spaceId,Long userId,User actor) {
+        access.spaces.lockById(spaceId).orElseThrow(SpaceAccess::missing);
         access.owner(spaceId,actor);
         if(actor.getId().equals(userId)) return;
         var next=access.teacher(spaceId,access.users.findById(userId).orElseThrow(SpaceAccess::missing));
         var previous=access.teacher(spaceId,actor); previous.owner=false; next.owner=true; next.manageStudentAccess=true;
     }
     public void remove(Long spaceId,Long userId,User actor) {
+        access.spaces.lockById(spaceId).orElseThrow(SpaceAccess::missing);
         access.owner(spaceId,actor);
         var member=access.teachers.findBySpaceIdAndUserId(spaceId,userId).orElseThrow(SpaceAccess::missing);
-        if(member.owner || access.classrooms.findBySpaceIdOrderByCreatedAtDesc(spaceId).stream().anyMatch(c -> c.getTeacher().getId().equals(userId)))
+        if(member.owner || access.classrooms.findBySpaceIdOrderByCreatedAtDesc(spaceId).stream().anyMatch(c -> c.getArchivedAt()==null && c.getTeacher().getId().equals(userId)))
             throw new ResponseStatusException(CONFLICT,"Transfer ownership and lead-teacher responsibilities before removing this teacher.");
         access.classTeachers.findByUserId(userId).stream()
             .filter(c -> access.classrooms.findById(c.classroomId).map(cl -> spaceId.equals(cl.getSpaceId())).orElse(false))

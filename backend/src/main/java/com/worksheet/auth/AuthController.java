@@ -25,8 +25,9 @@ public class AuthController {
     @org.springframework.transaction.annotation.Transactional
     public UserResponse signup(@RequestBody Signup input, HttpServletRequest request) {
         UserResponse user = auth.signup(input.name(), input.email(), input.password(), input.role());
-        sessions.startSession(request, user);
-        if(input.invitationToken()!=null) request.getSession().setAttribute("auth.spaceId",team.accept(input.invitationToken(),users.findById(user.id()).orElseThrow(com.worksheet.space.SpaceAccess::missing)));
+        Long invitedSpace=input.invitationToken()==null?null:team.accept(input.invitationToken(),users.findById(user.id()).orElseThrow(com.worksheet.space.SpaceAccess::missing));
+        sessions.startSession(request,user);
+        if(invitedSpace!=null) request.getSession().setAttribute("auth.spaceId",invitedSpace);
         return user;
     }
 

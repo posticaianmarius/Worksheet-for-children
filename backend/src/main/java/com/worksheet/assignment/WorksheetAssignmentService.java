@@ -105,7 +105,7 @@ public class WorksheetAssignmentService {
             created = List.of(new WorksheetAssignment(batchId, revision, membership.getClassroom(), membership.getUser()));
         }
         for(var item:created) { item.setSpaceId(item.getClassroom()==null?spaces.currentSpace(teacher):spaces.classSpace(item.getClassroom())); spaces.ensureStudent(item.getSpaceId(),item.getUser()); }
-        spaces.register(created.getFirst(),request.title());
+        spaces.register(created.getFirst(),request.title()==null||request.title().isBlank()?null:request.title().strip());
         return assignments.saveAll(created).stream().map(this::toResponse).toList();
     }
 

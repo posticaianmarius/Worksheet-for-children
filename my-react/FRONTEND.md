@@ -105,3 +105,12 @@ managed using batch UUIDs; legacy revision-group report routes remain compatible
 The personal-code entry point keeps the two-code shortcut in an optional disclosure.
 Auth, students and teachers have separate layouts while the game registry, editors,
 players, configuration schemas and scoring contracts remain shared and unchanged.
+
+
+## Teaching-space frontend
+
+`features/spaces` owns the context provider, team settings, invitation flow, directory, reviewed bulk student picker, and private access cards. `useResource` keys include both authentication identity and space ID. Space switches unmount the old view and clear its resource caches; credentials are held only inside the dedicated access view, never roster or draft recovery data.
+
+Class tabs load their own resources and share the same scoped assignment/results components as global screens. Assignment review publishes a frozen revision before confirmation; submissions use that ID. Exact delivery links select existing recipient assignments. Student My work and Finished work show class labels and filters, including completed historical work.
+
+For real integration verification, start a disposable PostgreSQL-backed build, then set `E2E_BASE_URL` to its origin and `E2E_LIVE_BACKEND=true`, and run `npm run test:e2e -- teaching-spaces-live.spec.js --workers=1`. This creates test accounts and classes; never run it against a shared database. Use distinct Playwright `--output` directories when running separate suites simultaneously.

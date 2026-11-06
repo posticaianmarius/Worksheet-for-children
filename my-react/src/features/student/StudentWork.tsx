@@ -1,3 +1,5 @@
+import WorksheetChooser from "./WorksheetChooser";
+import { useSpace, SpaceSwitcher } from "../spaces/SpaceContext";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Play, CircleCheck } from "lucide-react";
@@ -13,6 +15,15 @@ export default function StudentWork({
 }: {
   finished?: boolean;
 }) {
+  const { context } = useSpace();
+  const [classFilter, setClassFilter] = useState("");
+  const [worksheetCode, setWorksheetCode] = useState(() => {
+    try {
+      return sessionStorage.getItem("playsheets.worksheet-choice") ?? "";
+    } catch {
+      return "";
+    }
+  });
   const { user } = useSession(),
     { t } = useLanguage(),
     navigate = useNavigate();
@@ -38,69 +49,115 @@ export default function StudentWork({
   return (
     <Page
       title={t(finished ? "student.finished" : "student.work")}
-      subtitle={t("student.welcome", { name: user?.name })}
+      subtitle={t("student.welcome", {
+        name: context?.student?.name ?? user?.name,
+      })}
     >
       <ErrorNotice error={error} />
+      {worksheetCode && (
+        <WorksheetChooser
+          code={worksheetCode}
+          onClose={() => {
+            try {
+              sessionStorage.removeItem("playsheets.worksheet-choice");
+            } catch {
+              /* optional storage */
+            }
+            setWorksheetCode("");
+          }}
+        />
+      )}
       <Resource query={query}>
         {(assignments) => {
           const items = assignments.filter(
             (item) =>
-              !item.revokedAt && (item.status === "COMPLETED") === finished,
+              (finished
+                ? item.status === "COMPLETED"
+                : !item.revokedAt && item.status !== "COMPLETED") &&
+              (!classFilter || String(item.classroomId) === classFilter),
           );
-          return items.length ? (
-            <div className="student-work-grid">
-              {items.map((item) => (
-                <article className="panel student-work-card" key={item.id}>
-                  <span className="feature-icon">
-                    {finished ? (
-                      <CircleCheck size={25} />
-                    ) : (
-                      <BookOpen size={25} />
-                    )}
-                  </span>
-                  <h2>{item.worksheet.name}</h2>
-                  <p className="muted">
-                    {t("Assigned by {name}", { name: item.teacherName ?? "" })}
-                  </p>
-                  <span className="muted">
-                    {t(
-                      item.worksheet.items.length === 1
-                        ? "{count} activity"
-                        : "{count} activities",
-                      {
-                        count: item.worksheet.items.length,
-                      },
-                    )}
-                  </span>
-                  <Status value={item.status} />
-                  {finished ? (
-                    <Link className="button" to={"/assignments/" + item.id}>
-                      {t("student.viewResults")}
-                    </Link>
-                  ) : (
-                    <Button
-                      variant="primary"
-                      busy={busy === item.id}
-                      disabled={busy !== null}
-                      onClick={() => void start(item)}
-                    >
-                      <Play size={18} />
-                      {t(
-                        item.status === "IN_PROGRESS"
-                          ? "student.continue"
-                          : "student.start",
+          return (
+            <>
+              <label className="section-toolbar">
+                {t("Class")}
+                <select
+                  aria-label={t("Filter by class")}
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value)}
+                >
+                  <option value="">{t("All classes")}</option>
+                  {[
+                    ...new Map(
+                      assignments
+                        .filter((a) => a.classroomId)
+                        .map((a) => [a.classroomId, a.classroomName]),
+                    ).entries(),
+                  ].map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {items.length ? (
+                <div className="student-work-grid">
+                  {items.map((item) => (
+                    <article className="panel student-work-card" key={item.id}>
+                      <span className="feature-icon">
+                        {finished ? (
+                          <CircleCheck size={25} />
+                        ) : (
+                          <BookOpen size={25} />
+                        )}
+                      </span>
+                      <h2>{item.deliveryTitle || item.worksheet.name}</h2>
+                      {item.classroomName && <p>{item.classroomName}</p>}
+                      <p className="muted">
+                        {t("Assigned by {name}", {
+                          name: item.teacherName ?? "",
+                        })}
+                      </p>
+                      <span className="muted">
+                        {t(
+                          item.worksheet.items.length === 1
+                            ? "{count} activity"
+                            : "{count} activities",
+                          {
+                            count: item.worksheet.items.length,
+                          },
+                        )}
+                      </span>
+                      <Status value={item.status} />
+                      {finished ? (
+                        <Link className="button" to={"/assignments/" + item.id}>
+                          {t("student.viewResults")}
+                        </Link>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          busy={busy === item.id}
+                          disabled={busy !== null}
+                          onClick={() => void start(item)}
+                        >
+                          <Play size={18} />
+                          {t(
+                            item.status === "IN_PROGRESS"
+                              ? "student.continue"
+                              : "student.start",
+                          )}
+                        </Button>
                       )}
-                    </Button>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  description={t(
+                    finished ? "student.noFinished" : "student.noWork",
                   )}
-                </article>
-              ))}
-            </div>
-          ) : (
-            <Empty
-              description={t(
-                finished ? "student.noFinished" : "student.noWork",
+                />
               )}
-            />
+            </>
           );
         }}
       </Resource>
@@ -116,6 +173,7 @@ export function StudentSettings() {
     { preferences, setPreference } = usePreferences();
   return (
     <Page title={t("Settings")}>
+      <SpaceSwitcher />
       <section className="panel student-settings">
         <h2>{user?.name}</h2>
         <p className="muted">{t("student.profileHelp")}</p>

@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 const teacher = { id: 1, name: "Ana", role: "TEACHER" };
 const child = { id: 2, name: "Alex", role: "USER" };
@@ -97,6 +98,11 @@ async function setup(page, role = "TEACHER") {
       const reply = (json, status = 200) => route.fulfill({ json, status });
       if (path === "/api/auth/csrf")
         return reply({ headerName: "X-XSRF-TOKEN", token: "test" });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        return user ? reply(user) : reply({ message: "Please log in." }, 401);
+      }
       if (path === "/api/auth/me")
         return user ? reply(user) : reply({ message: "Please log in." }, 401);
       if (path === "/api/auth/logout") {
@@ -112,11 +118,13 @@ async function setup(page, role = "TEACHER") {
       if (path === "/api/classes") return reply([classroom]);
       if (path === "/api/classes/10") return reply(classroom);
       if (path === "/api/classes/10/members") return reply(students);
+      if (path === "/api/worksheets/20/assignments/preview")
+        return reply({ revisionId: 30, worksheet: sheet });
       if (path === "/api/worksheets") return reply([sheet]);
       if (path === "/api/assignments/report") {
         state.reports++;
         return reply(
-          url.searchParams.has("includeRemoved")
+          url.searchParams.get("includeRemoved") === "true"
             ? rows
             : rows.filter((row) => !row.removedAt),
         );
@@ -237,12 +245,22 @@ test("class assignments support explicitly selected recipients", async ({
     .getByRole("dialog")
     .getByRole("button", { name: "Number journey", exact: true })
     .click();
-  await page.getByLabel("Student", { exact: true }).selectOption("selected");
+  await page.getByLabel("Recipients", { exact: true }).selectOption("selected");
   await page.getByLabel("Maria", { exact: true }).check();
-  await page.getByRole("button", { name: "Assign", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Review assignment", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Assign worksheet", exact: true })
+    .click();
   await expect(page.locator(".delivery-card")).toHaveCount(3);
-  expect(state.assigned).toEqual({ classroomId: 10, userIds: [3] });
-  await page.getByRole("button", { name: "Progress", exact: true }).click();
+  expect(state.assigned).toEqual({
+    classroomId: 10,
+    userIds: [3],
+    revisionId: 30,
+  });
+  await page.getByRole("link", { name: "Progress", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "View Maria's result" }),
   ).toBeVisible();

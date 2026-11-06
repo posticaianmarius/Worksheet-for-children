@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 import { Buffer } from "node:buffer";
 
@@ -66,6 +67,11 @@ async function setup(page, { failUpload = false } = {}) {
       const path = new URL(route.request().url()).pathname;
       const method = route.request().method();
       const reply = (json) => route.fulfill({ json });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        return reply({ id: 1, role: "TEACHER", name: "Teacher" });
+      }
       if (path === "/api/auth/me")
         return reply({ id: 1, role: "TEACHER", name: "Teacher" });
       if (path === "/api/auth/csrf")

@@ -1,4 +1,5 @@
 import "./student.css";
+import { useSpace } from "../spaces/SpaceContext";
 import { useEffect, useState } from "react";
 import {
   Link,
@@ -16,6 +17,7 @@ import { LanguageMenu } from "../../shared/LanguageMenu";
 import { Button, ErrorNotice } from "../../shared/ui";
 
 export function StudentHeader() {
+  const { context } = useSpace();
   const { user, logout } = useSession(),
     { t } = useLanguage(),
     navigate = useNavigate();
@@ -39,7 +41,9 @@ export function StudentHeader() {
           <Brand />
         </Link>
         <div className="actions">
-          <span className="student-name">{user?.name}</span>
+          <span className="student-name">
+            {context?.student?.name ?? user?.name}
+          </span>
           <span className="student-language">
             <LanguageMenu />
           </span>

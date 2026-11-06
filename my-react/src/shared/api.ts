@@ -19,11 +19,21 @@ import type {
   WorksheetItem,
 } from "./types";
 export { ApiError };
+let activeSpaceId: number | null = null;
+export const setActiveSpace = (id: number | null) => {
+  activeSpaceId = id;
+};
 export const request = async <T>(
   url: string,
   options: RequestInit = {},
 ): Promise<T> => {
-  const value = (await apiRequest(url, options)) as T;
+  const headers = new Headers(options.headers);
+  if (
+    activeSpaceId !== null &&
+    !/^\/api\/(auth\/(login|signup|logout)|play\/)/.test(url)
+  )
+    headers.set("X-Space-Id", String(activeSpaceId));
+  const value = (await apiRequest(url, { ...options, headers })) as T;
   if (
     options.method &&
     !["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase()) &&
@@ -46,12 +56,18 @@ export const api = {
   me: () => request<User>("/api/auth/me"),
   login: (email: string, password: string) =>
     send<User>("/api/auth/login", "POST", { email, password }),
-  signup: (name: string, email: string, password: string) =>
+  signup: (
+    name: string,
+    email: string,
+    password: string,
+    invitationToken?: string,
+  ) =>
     send<User>("/api/auth/signup", "POST", {
       name,
       email,
       password,
       role: "TEACHER",
+      invitationToken,
     }),
   logout: () => send<void>("/api/auth/logout"),
   worksheets: () => request<Worksheet[]>("/api/worksheets"),
@@ -90,8 +106,15 @@ export const api = {
   rotateClass: (id: Id) =>
     send<Classroom>("/api/classes/" + id + "/join-code/rotate"),
   members: (id: Id) => request<Member[]>("/api/classes/" + id + "/members"),
-  addStudent: (id: Id, name: string) =>
-    send<Member>("/api/classes/" + id + "/members", "POST", { name }),
+  addStudent: (id: Id, name: string, allowDuplicate = false) =>
+    send<Member>("/api/classes/" + id + "/members", "POST", {
+      name,
+      allowDuplicate,
+    }),
+  addExistingStudent: (id: Id, studentId: number) =>
+    send<Member>("/api/classes/" + id + "/members", "POST", { studentId }),
+  student: (id: Id, user: Id) =>
+    request<Member>("/api/classes/" + id + "/members/" + user),
   renameStudent: (id: Id, user: Id, name: string) =>
     send<Member>("/api/classes/" + id + "/members/" + user, "PATCH", { name }),
   issueCode: (id: Id, user: Id) =>
@@ -119,9 +142,11 @@ export const api = {
     }),
   assignments: () => request<Assignment[]>("/api/assignments"),
   assignment: (id: Id) => request<Assignment>("/api/assignments/" + id),
-  report: (history = false) =>
+  report: (history = false, classroomId?: string) =>
     request<ReportRow[]>(
-      "/api/assignments/report" + (history ? "?includeRemoved=true" : ""),
+      "/api/assignments/report?includeRemoved=" +
+        history +
+        (classroomId ? "&classroomId=" + classroomId : ""),
     ),
   removeAssignmentGroup: (classId: string, revisionId: Id) =>
     send<void>(
@@ -133,15 +158,38 @@ export const api = {
     ),
   removeAssignmentBatch: (batchId: string) =>
     send<void>("/api/assignments/batches/" + batchId, "DELETE"),
+  assignmentPreview: (id: Id) =>
+    send<{ revisionId: number; worksheet: Worksheet }>(
+      "/api/worksheets/" + id + "/assignments/preview",
+    ),
   assign: (
     id: Id,
-    body: { classroomId?: number; userId?: number; userIds?: number[] },
+    body: {
+      classroomId?: number;
+      userId?: number;
+      userIds?: number[];
+      title?: string;
+      revisionId?: number;
+    },
   ) =>
     send<Assignment[]>("/api/worksheets/" + id + "/assignments", "POST", body),
   joinWorksheet: (code: string) =>
     send<{ assignmentId: number }>("/api/worksheets/join", "POST", {
       code: code.trim().toUpperCase(),
     }),
+  worksheetChoices: (code: string) =>
+    send<
+      {
+        assignmentId: number;
+        batchId: string;
+        classroomName: string | null;
+        title: string | null;
+        worksheetName: string;
+        assignedAt: string;
+      }[]
+    >("/api/worksheets/join/choices", "POST", { code }),
+  delivery: (id: string) =>
+    request<Assignment[]>("/api/assignments/batches/" + id),
   history: (id: Id, personal = false) =>
     request<Attempt[]>(
       "/api/" +

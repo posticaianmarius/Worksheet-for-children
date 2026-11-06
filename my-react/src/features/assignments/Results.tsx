@@ -16,7 +16,9 @@ export default function Results({
     [params] = useSearchParams();
   const [student, setStudent] = useState(""),
     [status, setStatus] = useState("");
-  const query = useResource(["results"], () => api.report(true));
+  const query = useResource(["results", classroomId], () =>
+    api.report(true, classroomId),
+  );
   const content = (
     <Resource query={query}>
       {(rows) => {

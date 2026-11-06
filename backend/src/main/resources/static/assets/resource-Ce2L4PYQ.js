@@ -1,0 +1,1 @@
+import{A as e,M as t,a as n,c as r,g as i,h as a}from"./state-BVWXxl4V.js";var o=t();function s(t,i){let{user:a}=n(),{context:o}=r();return e({queryKey:[a?.id,o?.spaceId,...t],queryFn:i})}function c({query:e,children:t}){return e.isPending?(0,o.jsx)(i,{}):e.error?(0,o.jsx)(a,{error:e.error,retry:()=>{e.refetch()}}):e.data===void 0?null:t(e.data)}export{s as n,c as t};

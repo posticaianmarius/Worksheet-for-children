@@ -107,7 +107,13 @@ public class ClassroomService {
 
     public List<ClassroomMemberResponse> getMembers(Long classroomId,User teacher) {
         spaces.requireClass(classroomId,teacher,false);
-        return members.findByClassroom_IdOrderByJoinedAt(classroomId).stream().map(this::memberResponse).toList();
+        var roster=members.findByClassroom_IdOrderByJoinedAt(classroomId);
+        var profiles=directory.profiles(roster.stream().map(ClassroomMember::getStudentId).filter(java.util.Objects::nonNull).toList());
+        return roster.stream().map(m -> {
+            var p=profiles.get(m.getStudentId());
+            if(p==null) p=profile(m);
+            return new ClassroomMemberResponse(m.getUser().getId(),p.name,null,m.getJoinedAt(),null,null,null,null,p.id,m.getLeftAt());
+        }).toList();
     }
     public ClassroomMemberResponse addStudent(Long classroomId,User teacher,StudentNameRequest request) {
         var classroom=requireOwnedClassroom(classroomId,teacher);
@@ -222,7 +228,7 @@ public class ClassroomService {
         members.findByClassroom_IdAndLeftAtIsNullOrderByJoinedAt(classroomId)
             .forEach(ClassroomMember::leave);
         var affected = assignments.findByClassroom_Id(classroomId);
-        affected.forEach(WorksheetAssignment::remove);
+        affected.forEach(a -> {spaces.register(a,null).closedAt=java.time.Instant.now();a.remove();});
         attempts.abandonActiveForAssignments(affected);
     }
 

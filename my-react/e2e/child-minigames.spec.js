@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
@@ -40,6 +41,11 @@ test("child preview does not save results and child gameplay saves its score", a
     async (route) => {
       const path = new URL(route.request().url()).pathname;
       const reply = (json) => route.fulfill({ json });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        return reply({ id: 2, name: "Ana", role });
+      }
       if (path === "/api/auth/me") return reply({ id: 2, name: "Ana", role });
       if (path === "/api/auth/csrf")
         return reply({ headerName: "X-XSRF-TOKEN", token: "test" });
@@ -129,6 +135,11 @@ for (const type of [
       async (route) => {
         const path = new URL(route.request().url()).pathname;
         const reply = (json) => route.fulfill({ json });
+        if (path === "/api/auth/context") {
+          const reply = (json, status = 200) =>
+            route.fulfill({ json: spaceContextFor(json), status });
+          return reply({ id: 2, name: "Ana", role: "USER" });
+        }
         if (path === "/api/auth/me")
           return reply({ id: 2, name: "Ana", role: "USER" });
         if (path === "/api/auth/csrf")

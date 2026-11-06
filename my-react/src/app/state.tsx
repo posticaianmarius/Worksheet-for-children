@@ -13,7 +13,8 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { api } from "../shared/api";
+import { SpaceProvider } from "../features/spaces/SpaceContext";
+import { api, setActiveSpace } from "../shared/api";
 import { translator } from "../shared/i18n";
 import type { Language, Translate } from "../shared/i18n";
 import type { User } from "../shared/types";
@@ -90,11 +91,13 @@ function SessionProvider({ children }: { children: ReactNode }) {
     staleTime: Infinity,
   });
   const refresh = useCallback(async () => {
+    setActiveSpace(null);
     client.removeQueries({ predicate: (q) => q.queryKey[0] !== "session" });
     return (await query.refetch()).data ?? null;
   }, [client, query]);
   const logout = useCallback(async () => {
     await api.logout();
+    setActiveSpace(null);
     client.clear();
     client.setQueryData(["session"], null);
   }, [client]);
@@ -165,7 +168,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <LanguageContext.Provider value={{ language, setLanguage, t }}>
         <PreferencesContext.Provider value={{ preferences, setPreference }}>
-          <SessionProvider>{children}</SessionProvider>
+          <SessionProvider>
+            <SpaceProvider>{children}</SpaceProvider>
+          </SessionProvider>
         </PreferencesContext.Provider>
       </LanguageContext.Provider>
     </QueryClientProvider>

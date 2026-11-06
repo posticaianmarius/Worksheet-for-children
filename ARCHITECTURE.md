@@ -1,65 +1,56 @@
-# PlaySheets — implemented architecture
+# PlaySheets architecture
 
-## Product structure
+## Product and ownership
 
-PlaySheets has one application with separate teacher and student workspaces.
-Teachers use Home, Worksheets, Classes, Assignments, Results and account settings.
-Students use My work, Finished work and personal preferences. The game player is
-an immersive view with a return to My work and a clear switch-student action.
-The frontend uses shared Brand, LanguageMenu, primitives and session guards;
-student screens never render the teacher sidebar or request teacher reports.
+One React client, one Spring Boot modular monolith, and PostgreSQL. Flyway owns schema changes. Teachers work in teaching spaces: an individual workspace, school, or teaching team.
 
-Teachers create student profiles inside a class. A personal student code signs in
-at `POST /api/play/login` and opens `/student`; a worksheet code is an optional
-direct-launch shortcut through the existing `/api/play/join` contract. The student
-code authenticates an identity, while a worksheet code selects content. Classroom
-membership and assignment ownership still control access on the backend.
-Code replacement invalidates the old credential and code-authenticated sessions;
-the profile, assignments, attempts and results retain their IDs. Teachers can print
-individual access cards. Existing email-based USER accounts remain compatible.
+A teaching space contains teacher memberships, a shared student directory, classes, assignment deliveries, and progress. Student profiles are scoped to a space and reference existing authentication users. Class memberships reference those profiles. A student can therefore join several classes without receiving another identity or login.
 
-A worksheet is reusable editable content. An assignment delivery is identified by
-the existing `batchId`, with one assignment row per recipient and a frozen worksheet
-revision. Teachers can target a whole class or `classroomId` with explicit `userIds`.
-The Assignments screen manages each delivery independently; Results shows saved
-progress, including closed work. Closing a batch abandons its unfinished attempts
-and preserves completed work without closing another delivery of the same revision.
-Class pages provide Students, Assignments and Progress tabs using the same feature
-components as the global views. Historical revision-group report links remain valid.
+Worksheet libraries remain private to their authors across spaces. Classes receive immutable revisions; co-teachers and space owners can review assigned snapshots and results without opening the author's editable worksheet.
 
-This change reuses existing membership, student-code, batch and revision columns;
-no database reset, reseeding or identity migration is required. Existing routes and
-legacy assignment APIs remain available for bookmarks and historical data.
+| Permission | Owner | Lead teacher | Co-teacher |
+| --- | --- | --- | --- |
+| Space settings, directory names/archive, invitations and team permissions | Yes | No | No |
+| View/manage all classes and results in space | Yes | Assigned classes | Assigned classes |
+| Search/create directory profiles and add them to own classes | Yes | Yes | Yes |
+| Choose co-teachers or transfer class lead | Yes | Own classes | No |
+| Print/reset student codes across space | Yes | Explicit delegation | Explicit delegation |
 
+Space ownership is separate from platform ADMIN. A worksheet author's identity alone does not grant access to class results. Removing a teacher revokes their space access immediately; lead and owner responsibilities must be reassigned first.
 
-The redesigned React client uses strict TypeScript, lazy routes, a shared design
-system, and separate game engines, editors and players. See
-[`my-react/FRONTEND.md`](my-react/FRONTEND.md) for frontend ownership, game-module
-contracts, draft recovery and verification. The backend contracts described below
-remain the source of truth for persistence and published history.
+## Modules and interfaces
 
-The product uses one React client, one Spring Boot modular-monolith backend, and one PostgreSQL database. Backend code is under `backend`; Flyway owns the schema. This document describes the implemented backend model rather than the obsolete addition-demo prototype.
+- **auth** retains email/password accounts, session fixation protection, CSRF, and `/api/auth/me`. `/api/auth/context` lists available spaces, selected space, scoped student identity, and capabilities. POST selects an authorized space.
+- **space** owns teaching spaces, memberships, invitations, student directory, credentials, and the shared authorization policy. `/api/spaces/{id}` exposes team, invitation, student, bulk-add and credential resources. Class co-teachers use `/api/classes/{id}/teachers`.
+- **classroom** owns class setup, roster membership, former-student lookup, archive, and personal-code entry. Classes expose Overview / Students / Assignments / Progress.
+- **assignment** creates recipient rows and one delivery, retaining existing batch UUIDs. Preview publishes the exact revision reviewed by the teacher; create accepts that revision ID. Delivery links use `/work/{batchId}` and require an eligible signed-in student.
+- **attempt** preserves immutable configurations and the existing scoring contracts. Only a student can write their own active assignment attempt. Teachers review results through the class policy.
+- **worksheet / minigame** retain the existing authoring, schemas, catalog, asset and game contracts.
 
-```text
-USER / TEACHER / ADMIN
-        |
-        +-- editable Worksheet --< WorksheetItem
-        |          |
-        |          +--< immutable WorksheetRevision --< RevisionItem
-        |                                                   |
-        +-- Classroom --< Membership                        +--< Attempt --< ItemResult
-        |                                                       ^
-        +-- per-user Assignment --------------------------------+
+Scoped browser requests send `X-Space-Id`. The server validates membership and resource scope; a selected value or hidden UI control never grants authority. Code-authenticated sessions are bound to the credential's student profile and space and cannot switch to another space. Legacy email students with multiple spaces choose one.
 
-MiniGameDefinition(type, version, JSON schemas) --< logical asset links >-- Asset
-```
+The frontend uses `[userId, spaceId, ...resourceKey]` query keys and clears resource caches on identity/space changes. Class tabs load independently. Reports query authorized classes on the server and load attempts/results in batches; roster responses contain neither private codes nor repeated per-student grade queries.
 
-Assignments and attempts reference immutable worksheet revisions. Editing a worksheet therefore cannot alter assigned content or completed history. New attempts have an explicit `IN_PROGRESS -> COMPLETED` lifecycle; classroom revocation changes unfinished assigned attempts to `ABANDONED`. The server validates item payloads and aggregates final totals.
+## Student access and invitations
 
-Worksheet share codes use the same lifecycle. Sharing pins an immutable revision; redeeming the code creates one per-user assignment to that revision. Editing the draft does not change an already shared worksheet. Rotating the code publishes the current draft and invalidates the previous code.
+Owners create revocable, single-use teacher invitation links with seven-day expiry. Only hashed tokens are stored; invitations are copied by the owner, without an email-delivery dependency. Existing teachers retain their personal spaces when joining. Invited signups join directly.
 
-Authentication uses one session system and roles. Spring Security centrally provides session authorization, credential CORS, CSRF protection, session fixation protection, and JSON `401/403` responses. Services enforce resource ownership and intentionally return `404` for cross-user identifiers.
+Students use one private eight-character code or QR card for all classes in their space. QR credentials travel in a URL fragment, cleared before authentication, and never in query strings. Codes are returned only by dedicated permission-controlled, non-cacheable credential operations. Printing preserves the current primary code; replacement invalidates every alias and all old code sessions. Archiving a profile disables its login and closes unfinished work without deleting history.
 
-Dynamic mini-games share one catalog pipeline rather than one backend per game. Versioned definitions provide configuration/result JSON Schemas and logical asset references. Admins manage catalog versions; teachers build worksheets from approved active definitions. Legacy Minigame1 and Count & Match routes remain available as adapters.
+Directory search precedes creation. Duplicate names require an explicit choice, not automatic identity merging. Bulk pasted names have a review step and are applied in one transaction. Membership removal affects only that class; re-adding reuses the identity and never reopens old work.
 
-PostgreSQL changes are forward-only. Migrations V1–V13 remain historical; V14–V17 add admin/locking, immutable revisions, canonical attempts, and catalog/asset integrity. See `backend/README.md` and `backend/DYNAMIC_MINIGAME_REPORT.txt` for the module map, authorization matrix, route examples, configuration, and verification process.
+## Assignments and history
+
+The flow is Choose worksheet → Recipients → Review → Assign → Progress. Recipients are fixed after creation; additional recipients require a new delivery. Optional delivery titles distinguish repeated assignments of the same worksheet. Frozen revisions preserve game configurations and completed scores.
+
+Closing a delivery affects only its batch. Class archive closes its work and exposes read-only history. Completed student work remains available in Finished work after membership removal or closure; unfinished attempts become ABANDONED. Archived classes have no restore operation in this release. Historical student pages use direct authorized lookups, including former memberships.
+
+Legacy revision-group routes and worksheet codes remain adapters. An ambiguous worksheet code asks the student to choose among eligible deliveries rather than silently selecting the newest one. Historical general share codes can create direct work only inside the author's personal space and cannot bypass fixed class recipients.
+
+## Migration and verification
+
+V25 adds teaching spaces after the existing V1–V24 sequence. It creates personal spaces for existing teachers, preserves all existing IDs, attaches classes, derives scoped students from memberships and direct assignments, and backfills deliveries from batch IDs. Valid active member codes become profile credential aliases, with the oldest valid code primary. Previously invalid codes stay invalid. The historical member-code column is retained but cleared; credential storage becomes authoritative.
+
+No reset, reseed, name-based merge, class transfer, or score rewrite is required. Back up a populated database before applying migrations. Schema changes are forward-only; restoring an older application also requires the matching database backup.
+
+Verification includes backend permission/lifecycle tests, real populated PostgreSQL upgrade tests, frontend checks, mocked browser regressions, and `teaching-spaces-live.spec.js` against a disposable database. See the backend and frontend READMEs for commands. Parents, shared worksheet libraries, cross-space linking, attendance, billing, and school administration remain outside this release.

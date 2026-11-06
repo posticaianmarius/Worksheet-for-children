@@ -1,3 +1,4 @@
+import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 
 const teacher = {
@@ -112,6 +113,13 @@ async function mockApi(page, { student = false, fail = false } = {}) {
     async (route) => {
       const path = new URL(route.request().url()).pathname;
       const reply = (json, status = 200) => route.fulfill({ json, status });
+      if (path === "/api/auth/context") {
+        const reply = (json, status = 200) =>
+          route.fulfill({ json: spaceContextFor(json), status });
+        return reply(
+          student ? { ...teacher, id: 2, role: "USER", name: "Ana" } : teacher,
+        );
+      }
       if (path === "/api/auth/me")
         return reply(
           student ? { ...teacher, id: 2, role: "USER", name: "Ana" } : teacher,
