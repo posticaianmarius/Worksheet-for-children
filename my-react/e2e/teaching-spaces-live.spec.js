@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
 import process from "node:process";
-import path from "node:path";
 // Uses only a disposable PostgreSQL-backed application. No API mocking.
 async function change(context, url, data = {}, method = "POST") {
   const csrf = await (await context.request.get("/api/auth/csrf")).json();
@@ -33,7 +32,7 @@ async function english(page) {
 test("real teaching team: shared students, frozen deliveries, delegated cards, login and history", async ({
   browser,
   page,
-}) => {
+}, testInfo) => {
   test.setTimeout(180000);
   page.setDefaultTimeout(15000);
   await english(page);
@@ -222,11 +221,11 @@ test("real teaching team: shared students, frozen deliveries, delegated cards, l
   const printed = await coPage.locator(".student-login-card").boundingBox();
   expect(printed.y).toBeLessThan(80);
   await coPage.screenshot({
-    path: path.join(process.env.TEMP, "playsheets-card-print.png"),
+    path: testInfo.outputPath("playsheets-card-print.png"),
   });
   await coPage.emulateMedia({ media: "screen" });
   await coPage.screenshot({
-    path: path.join(process.env.TEMP, "playsheets-student-card.png"),
+    path: testInfo.outputPath("playsheets-student-card.png"),
   });
   const childContext = await browser.newContext({
     baseURL: process.env.E2E_BASE_URL,
@@ -269,7 +268,7 @@ test("real teaching team: shared students, frozen deliveries, delegated cards, l
     child.getByRole("heading", { name: "Reading practice", exact: true }),
   ).toBeVisible();
   await child.screenshot({
-    path: path.join(process.env.TEMP, "playsheets-student-phone.png"),
+    path: testInfo.outputPath("playsheets-student-phone.png"),
   });
   await change(
     page.context(),
@@ -299,11 +298,11 @@ test("real teaching team: shared students, frozen deliveries, delegated cards, l
     page.locator(".roster-desktop").getByText("Maria", { exact: true }),
   ).toBeVisible();
   await page.screenshot({
-    path: path.join(process.env.TEMP, "playsheets-class-desktop.png"),
+    path: testInfo.outputPath("playsheets-class-desktop.png"),
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
-    path: path.join(process.env.TEMP, "playsheets-class-phone.png"),
+    path: testInfo.outputPath("playsheets-class-phone.png"),
   });
   expect(
     await page.evaluate(

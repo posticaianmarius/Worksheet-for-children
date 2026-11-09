@@ -22,12 +22,47 @@ Space ownership is separate from platform ADMIN. A worksheet author's identity a
 
 ## Modules and interfaces
 
-- **auth** retains email/password accounts, session fixation protection, CSRF, and `/api/auth/me`. `/api/auth/context` lists available spaces, selected space, scoped student identity, and capabilities. POST selects an authorized space.
-- **space** owns teaching spaces, memberships, invitations, student directory, credentials, and the shared authorization policy. `/api/spaces/{id}` exposes team, invitation, student, bulk-add and credential resources. Class co-teachers use `/api/classes/{id}/teachers`.
-- **classroom** owns class setup, roster membership, former-student lookup, archive, and personal-code entry. Classes expose Overview / Students / Assignments / Progress.
-- **assignment** creates recipient rows and one delivery, retaining existing batch UUIDs. Preview publishes the exact revision reviewed by the teacher; create accepts that revision ID. Delivery links use `/work/{batchId}` and require an eligible signed-in student.
-- **attempt** preserves immutable configurations and the existing scoring contracts. Only a student can write their own active assignment attempt. Teachers review results through the class policy.
-- **worksheet / minigame** retain the existing authoring, schemas, catalog, asset and game contracts.
+The backend keeps one deployable application and database. Dependencies flow from
+`application` into `learning`, then into `teaching` and `content`; these depend on
+`auth` and `shared`. Teaching and content are independent of each other and of
+learning. ArchUnit rejects module cycles and cross-module repository access.
+
+| Module | Owns |
+| --- | --- |
+| `auth` | Accounts, roles, sessions, code-session validation SPI, identity operations |
+| `teaching` | Spaces, teams, directory, credentials, classroom rosters and policy |
+| `content` | Drafts, items, immutable revisions, catalog, schema validation and assets |
+| `learning` | Deliveries, recipient assignments, attempts, reports, redemption and legacy results |
+| `application` | HTTP adapters combining modules and transactional signup/archive/removal workflows |
+| `shared` | Error responses, security configuration, code generation and storage abstractions |
+
+Modules call small owner facades such as `UserAccounts`, `ClassRosters`,
+`WorksheetContent` and `LearningLifecycle`. Repositories stay inside their module.
+Existing JPA associations and mapped objects returned to connect them are the
+explicit persistence exception; public JSON responses remain DTOs. Mutable entity
+fields are encapsulated. Assignment policy and delivery registration belong to
+learning, not space authorization. Catalog reference checks use `ContentReferences`;
+content's historical-result deletion check uses `ItemResultUsage`, implemented by
+learning without introducing a reverse dependency.
+
+`SignupWorkflow` commits account creation and invitation membership together.
+`TeachingWorkflows` coordinates teaching changes and learning closure in one
+transaction. A failure rolls back both sides. Repeated class archive remains
+idempotent. Legacy result, worksheet-code, class-test and game routes remain adapters.
+The applied V23 migration and its historical configuration helper keep their exact
+source and qualified name.
+
+The React dependency direction is `app` → features/games → shared. App composes
+providers and routes; shared owns context contracts, HTTP, query scoping, primitives
+and localization. Feature clients declare the read models their writes invalidate.
+Cross-feature UI imports use the entrypoints listed in the architecture test;
+games cannot import product features, app composition or persistence. The editor
+separates UI, coordination, navigation, recovery storage and save/retry models.
+
+Production frontend output lives in ignored `my-react/dist`. The explicit Maven
+`with-frontend` profile validates and packages it into the JAR, clearing stale
+hashed assets first. Docker builds both source trees. No generated static bundle,
+compiled JAR or runtime data is tracked. See [cleanup verification](docs/cleanup.md).
 
 Scoped browser requests send `X-Space-Id`. The server validates membership and resource scope; a selected value or hidden UI control never grants authority. Code-authenticated sessions are bound to the credential's student profile and space and cannot switch to another space. Legacy email students with multiple spaces choose one.
 

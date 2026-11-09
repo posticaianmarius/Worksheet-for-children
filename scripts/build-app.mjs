@@ -10,7 +10,15 @@ for (const [command, args, directory] of [
   ],
   [
     process.platform === "win32" ? "mvnw.cmd" : "bash",
-    [...(process.platform === "win32" ? [] : ["./mvnw"]), "-B", "-ntp", "-Pwith-frontend", "package", ...process.argv.slice(2)],
+    [
+      ...(process.platform === "win32" ? [] : ["./mvnw"]),
+      "-B",
+      "-ntp",
+      "-Pwith-frontend",
+      "clean",
+      "package",
+      ...process.argv.slice(2),
+    ],
     "backend",
   ],
 ]) {

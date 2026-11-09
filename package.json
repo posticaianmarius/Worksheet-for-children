@@ -10,6 +10,8 @@
     "test:e2e": "npm --prefix my-react run test:e2e",
     "build:app": "node scripts/build-app.mjs",
     "test:live": "npm --prefix my-react run test:live",
-    "check:bundle": "npm --prefix my-react run check:bundle"
+    "check:bundle": "npm --prefix my-react run check:bundle",
+    "test:backend": "node scripts/backend.mjs clean verify",
+    "verify": "node scripts/verify.mjs"
   }
 }

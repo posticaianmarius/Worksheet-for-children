@@ -71,11 +71,10 @@ docker compose exec frontend npm run lint
 docker compose exec frontend npm run build -- --outDir /tmp/worksheet-frontend-build
 ```
 
-The build check uses a temporary container directory, preserving the backend's
-committed static files. For backend tests without a local JDK, use the build stage:
+The build check uses a temporary container directory. Generated bundles are ignored by Git. For backend tests without a local JDK, use the build stage:
 
 ```powershell
-docker build --target build -t worksheet-backend-check ./backend
+docker build --target build -f backend/Dockerfile -t worksheet-backend-check .
 docker run --rm --entrypoint ./mvnw worksheet-backend-check -B test
 ```
 
@@ -96,17 +95,16 @@ From the repository root in PowerShell:
 
 ```powershell
 docker compose up -d postgres
-cd my-react
-npm ci
-npm run build
-cd ../backend
+npm --prefix my-react ci
+npm run build:app
 $env:DB_URL = 'jdbc:postgresql://localhost:5433/worksheets'
-.\mvnw.cmd clean spring-boot:run
+java -jar backend/target/backend-0.0.1-SNAPSHOT.jar
 ```
 
 Open http://localhost:8080. Stop the backend with Ctrl+C.
-The frontend build writes to `backend/src/main/resources/static`, which Spring Boot serves.
-Rebuild the frontend and restart the backend after changing frontend code in this mode.
+The frontend builds into ignored `my-react/dist`. The explicit Maven `with-frontend`
+profile packages it into the JAR; `build:app` builds both source trees from scratch.
+Rebuild the application and restart the backend after frontend changes in this mode.
 
 Compose publishes PostgreSQL at `localhost:5433`, database `worksheets`, with local
 username/password `postgres`. The standalone backend defaults to port 5432, so the
@@ -183,13 +181,31 @@ java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
 The URL above selects the Compose database; use port 55440 for this checkout's
-saved local container. The JAR requires a running PostgreSQL database. To include frontend changes, run
-`npm run build` in `my-react` before building the JAR.
+saved local container. The JAR requires a running PostgreSQL database. Use `npm run build:app` from the
+repository root to build the complete UI/API artifact. Plain backend verification
+builds an API-only JAR and does not require a frontend bundle.
 
 Regular tests catch duplicate migration versions without Docker. Full verification
 also checks migrations, upgrades with existing data, Hibernate mappings, and HTTP
-startup using disposable PostgreSQL containers. These PostgreSQL tests are skipped
-when Docker is unavailable, so a build with skipped tests is not full verification.
+startup using disposable PostgreSQL containers. These PostgreSQL tests are mandatory; full verification fails when Docker is
+unavailable. Use regular backend `test` for the Docker-free checks.
+
+## Complete verification
+
+From the repository root, after installing frontend dependencies:
+
+```bash
+npm run verify
+```
+
+This runs frontend units and architecture checks, lint, types, build/bundle budget,
+mocked/visual browser checks, backend/ArchUnit/PostgreSQL verification, then both
+live browser suites against an automatically provisioned production stack.
+Install Chromium once with `npx --prefix my-react playwright install chromium`.
+Individual commands include `npm run test:e2e`, `npm run test:backend` and
+`npm run test:live`. Live tests use a random Compose project, dynamic local port,
+and their own volume; cleanup removes only that test stack. Existing local data
+and uploads are never mounted by this runner.
 
 ## Migration startup troubleshooting
 
@@ -211,7 +227,10 @@ reconciliation; do not delete the database or its migration history to bypass th
 - `my-react/`: React source and Vite build configuration.
 - `docker-compose.yml`: frontend, backend, and PostgreSQL development services.
 - `database/postgres-data/`: local database files managed by PostgreSQL.
-- `Project/`: legacy build artifacts; use `backend` and `my-react` for current development.
+- `compose.test.yml`: disposable production-stack browser verification.
+- `scripts/`: cross-platform build and verification commands.
+
+Generated JARs, build bundles and the obsolete `Project` output are no longer tracked.
 
 See [backend documentation](backend/README.md) for architecture, API configuration,
 and migration details, and [task image documentation](backend/TASK_IMAGES.md) for image APIs.

@@ -27,17 +27,20 @@ npm run check:bundle
 npm run test:e2e
 ```
 
-The production build writes to the backend's static resources. The bundle check
+The production build writes to ignored `dist`; the backend's explicit
+`with-frontend` packaging profile includes that output in the application JAR. The bundle check
 enforces a 180 KiB gzip public-entry JavaScript budget.
 
 Install the browser once with `npx playwright install chromium`. The ordinary
 browser suite mocks API responses and does not modify a database. It includes
 visual snapshots, responsive checks, scoring, authoring and recovery regressions.
 
-To test against an existing frontend, set `E2E_BASE_URL`. For a full browser/backend
-contract check, point the backend at a **disposable PostgreSQL database** and run
-`npm run test:live`. That test creates real accounts, uploads, worksheets, a class,
-assignments and saved results; do not use a shared or production database.
+To test mocked workflows against an existing frontend, set `E2E_BASE_URL`.
+`npm run test:browser` and `npm run test:visual` select those suites separately.
+`npm run test:live` automatically provisions a disposable production stack, runs
+both live suites, and removes its own containers and data. It never uses the normal
+local database. Docker is required. From the repository root, `npm run build:app`
+packages the frontend and backend together; `npm run verify` runs every check.
 
 See [FRONTEND.md](FRONTEND.md) for module boundaries, game contracts, saving,
 recovery, visual conventions and test maintenance.

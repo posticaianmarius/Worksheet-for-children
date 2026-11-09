@@ -1,6 +1,11 @@
 # PlaySheets — final session handoff
 
-Last verified: **2026-11-06**. Branch: **redesign**.
+Last teaching-space rollout verification: **2026-11-06**. Branch: **redesign**.
+
+Architecture cleanup follows this checkpoint. Read [cleanup handoff](cleanup.md)
+for the current module layout, build commands and verification record. The saved
+local database and backup notes below are historical and were preserved; cleanup
+did not migrate or reset that database.
 
 The accepted teaching-space/classroom plan is implemented and verified. There is
 no pending implementation task from that plan. In the next session, read this

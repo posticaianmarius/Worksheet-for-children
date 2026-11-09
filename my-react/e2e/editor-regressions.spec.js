@@ -445,6 +445,12 @@ test("share dialog explains saved versions and confirms before replacing a code"
     .click();
   expect(state.changes).toHaveLength(0);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", {
+      name: "Replace the worksheet code?",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   expect(state.changes).toHaveLength(0);
   await page
     .getByRole("dialog")
