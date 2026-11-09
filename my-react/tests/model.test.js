@@ -1,13 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  generateQuestions,
-  imagePaths,
-  isCorrect,
-  remainingItems,
-  saveDraft,
-  setAtPath,
-} from "../src/platform/game-model.js";
+import { generateQuestions, isCorrect } from "../src/games/model.ts";
+import { remainingItems } from "../src/features/attempts/model.ts";
+import { saveDraft } from "../src/features/worksheets/save.ts";
+import { imagePaths, setAtPath } from "../src/shared/configuration.ts";
 
 test("all arithmetic operations produce finite, nonnegative, exact answers", () => {
   for (const operation of ["+", "-", "*", "/"]) {

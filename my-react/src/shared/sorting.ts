@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { sortRows } from "../platform/sorting.js";
+import { sortRows } from "./sorting-model";
 export function useSort<T>(
   initial: string,
   values: Record<string, (row: T) => unknown>,

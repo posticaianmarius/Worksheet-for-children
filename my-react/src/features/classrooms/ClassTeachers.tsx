@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { useLanguage, useSession } from "../../app/state";
+import { Resource, useResource } from "../../shared/resource";
+import { useLanguage, useSession, useSpace } from "../../shared/runtime";
 import type { Classroom } from "../../shared/types";
 import { Button, ErrorNotice } from "../../shared/ui";
-import { Resource, useResource } from "../../shared/resource";
-import { useSpace } from "../spaces/SpaceContext";
 import { spacesApi } from "../spaces/api";
 export default function ClassTeachers({ classroom }: { classroom: Classroom }) {
   const { context } = useSpace(),

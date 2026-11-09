@@ -1,11 +1,12 @@
-import "./classrooms.css";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
-import { Button, Empty, ErrorNotice, Loading, Page } from "../../shared/ui";
+import { useLanguage } from "../../shared/runtime";
+import { classroomsApi } from "./api";
+import "./classrooms.css";
+
+import { useSpace } from "../../shared/runtime";
 import type { AccessCard } from "../../shared/types";
-import { useSpace } from "../spaces/SpaceContext";
+import { Button, Empty, ErrorNotice, Loading, Page } from "../../shared/ui";
 import { spacesApi } from "../spaces/api";
 import { LoginCard } from "../spaces/StudentAccess";
 export default function AccessCards() {
@@ -19,7 +20,7 @@ export default function AccessCards() {
   useEffect(() => {
     let active = true;
     if (!permitted) return;
-    void api
+    void classroomsApi
       .members(id)
       .then((members) =>
         Promise.all(

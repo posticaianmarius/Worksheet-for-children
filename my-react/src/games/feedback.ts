@@ -1,6 +1,6 @@
 // Keep answer and completion sounds mutually exclusive, including pending playback.
-let currentSound = null;
-let currentKind = null;
+let currentSound: HTMLAudioElement | null = null;
+let currentKind: keyof typeof feedbackSounds | null = null;
 
 export const feedbackSounds = {
   correct: "/sounds/correct-answer-tone.wav",
@@ -15,7 +15,7 @@ export function stopGameFeedback({ preserveCompletion = false } = {}) {
   currentKind = null;
 }
 
-function playFeedback(kind) {
+function playFeedback(kind: keyof typeof feedbackSounds) {
   stopGameFeedback();
   try {
     const sound = new Audio(feedbackSounds[kind]);
@@ -40,15 +40,10 @@ function playFeedback(kind) {
   }
 }
 
-export function playAnswerFeedback(correct) {
+export function playAnswerFeedback(correct: boolean) {
   playFeedback(correct ? "correct" : "incorrect");
 }
 
 export function playTaskComplete() {
   playFeedback("complete");
-}
-
-export function answerState(selected, answer, correctAnswer) {
-  if (selected === null || selected !== answer) return undefined;
-  return answer === correctAnswer ? "correct" : "incorrect";
 }

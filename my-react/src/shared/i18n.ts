@@ -1,5 +1,5 @@
-import { translate } from "../platform/translations.js";
-import { spaceCopy } from "../features/spaces/translations";
+import { translate } from "./i18n/legacy";
+import { spaceCopy } from "./i18n/spaces";
 export type Language = "en" | "ro";
 export type Translate = (
   key: string,

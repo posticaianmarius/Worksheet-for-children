@@ -4,9 +4,10 @@ import { lazy, Suspense, useState } from "react";
 
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
-import { useLanguage } from "../../app/state";
+import { useLanguage } from "../../shared/runtime";
 
-import { api } from "../../shared/api";
+import { assignmentsApi } from "../assignments/api";
+import { classroomsApi } from "./api";
 
 import { Breadcrumbs, Button, Empty, Loading, Page } from "../../shared/ui";
 
@@ -34,7 +35,7 @@ export default function Classroom() {
     [params] = useSearchParams();
 
   const tab = params.get("tab") ?? "overview",
-    query = useResource(["class", id], () => api.classroom(id));
+    query = useResource(["class", id], () => classroomsApi.classroom(id));
 
   return (
     <Resource query={query}>
@@ -99,9 +100,13 @@ function Overview({ classroom }: { classroom: ClassroomType }) {
     [adding, setAdding] = useState(false),
     [assigning, setAssigning] = useState(false);
 
-  const members = useResource(["class-members", id], () => api.members(id));
+  const members = useResource(["class-members", id], () =>
+    classroomsApi.members(id),
+  );
 
-  const report = useResource(["class-report", id], () => api.report(true, id));
+  const report = useResource(["class-report", id], () =>
+    assignmentsApi.report(true, id),
+  );
 
   return (
     <>

@@ -1,24 +1,16 @@
 import { useEffect } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { useLanguage, useSession } from "../../app/state";
-import { api } from "../../shared/api";
-import { Page } from "../../shared/ui";
+import { useLanguage, useSession } from "../../shared/runtime";
+import { assignmentsApi } from "./api";
+
 import { Resource, useResource } from "../../shared/resource";
-export function pendingWork() {
-  try {
-    const path = sessionStorage.getItem("playsheets.pending-work");
-    sessionStorage.removeItem("playsheets.pending-work");
-    return path?.match(/^\/work\/[a-f0-9-]{36}$/i) ? path : undefined;
-  } catch {
-    return undefined;
-  }
-}
+import { Page } from "../../shared/ui";
 export default function DeliveryEntry() {
   const { batchId = "" } = useParams(),
     { user } = useSession(),
     { t } = useLanguage();
   const query = useResource(["delivery", batchId], () =>
-    user ? api.delivery(batchId) : Promise.resolve([]),
+    user ? assignmentsApi.delivery(batchId) : Promise.resolve([]),
   );
   useEffect(() => {
     if (!user && /^[a-f0-9-]{36}$/i.test(batchId)) {

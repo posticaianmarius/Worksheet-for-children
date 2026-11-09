@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
-import { Modal } from "../../shared/ui";
+import { useLanguage } from "../../shared/runtime";
+import { assignmentsApi } from "../assignments/api";
+
 import { Resource, useResource } from "../../shared/resource";
+import { Modal } from "../../shared/ui";
 export default function WorksheetChooser({
   code,
   onClose,
@@ -12,7 +13,7 @@ export default function WorksheetChooser({
 }) {
   const { t, language } = useLanguage(),
     query = useResource(["worksheet-choices", code], () =>
-      api.worksheetChoices(code),
+      assignmentsApi.worksheetChoices(code),
     );
   return (
     <Modal open title={t("Choose your assignment")} onClose={onClose}>

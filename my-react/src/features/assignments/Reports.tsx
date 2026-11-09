@@ -1,4 +1,4 @@
-import "./assignments.css";
+import { BookOpen, Copy, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import {
   Link,
@@ -6,9 +6,14 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { BookOpen, Copy, Trash2, Users } from "lucide-react";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
+import { useLanguage } from "../../shared/runtime";
+import { classroomsApi } from "../classrooms/api";
+import { assignmentsApi } from "./api";
+import "./assignments.css";
+
+import { Resource, useResource } from "../../shared/resource";
+import { percentage, timestamp, useSort } from "../../shared/sorting";
+import type { ReportRow } from "../../shared/types";
 import {
   Breadcrumbs,
   Button,
@@ -18,10 +23,7 @@ import {
   SortHeading,
   Status,
 } from "../../shared/ui";
-import { Resource, useResource } from "../../shared/resource";
-import { percentage, timestamp, useSort } from "../../shared/sorting";
-import { groupAssignmentReport } from "../../platform/assignmentReport.js";
-import type { ReportRow } from "../../shared/types";
+import { groupAssignmentReport } from "./report-model";
 interface ReportWorksheet extends ReportRow {
   id: string;
   rows: ReportRow[];
@@ -44,8 +46,8 @@ export default function Reports() {
   const [notice, setNotice] = useState("");
   const query = useResource(["assignment-report", history], async () => {
     const [classes, rows] = await Promise.all([
-      api.classes(),
-      api.report(history),
+      classroomsApi.classes(),
+      assignmentsApi.report(history),
     ]);
     return groupAssignmentReport(
       history ? [] : classes,
@@ -88,7 +90,10 @@ export default function Reports() {
           "Student access will stop. Saved results remain available in history.",
         )}
         onConfirm={async () => {
-          await api.removeAssignmentGroup(classId ?? "direct", worksheet.id);
+          await assignmentsApi.removeAssignmentGroup(
+            classId ?? "direct",
+            worksheet.id,
+          );
           await query.refetch();
           if (revisionId) navigate("/assignments/classes/" + classId);
         }}

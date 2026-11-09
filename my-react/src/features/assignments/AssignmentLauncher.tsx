@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
-import { Button, Empty, Modal } from "../../shared/ui";
+import { useLanguage } from "../../shared/runtime";
+import { worksheetsApi } from "../worksheets/api";
+
 import { Resource, useResource } from "../../shared/resource";
-import { AssignDialog } from "../worksheets/Sharing";
+import { Button, Empty, Modal } from "../../shared/ui";
+import { AssignDialog } from "../assignments/Sharing";
 export default function AssignmentLauncher({
   classroomId,
   onClose,
@@ -14,7 +15,7 @@ export default function AssignmentLauncher({
   const { t } = useLanguage(),
     [selected, setSelected] = useState<number | null>(null),
     [search, setSearch] = useState("");
-  const query = useResource(["assign-worksheets"], api.worksheets);
+  const query = useResource(["assign-worksheets"], worksheetsApi.worksheets);
   return selected === null ? (
     <Modal open title={t("Choose worksheet")} onClose={onClose}>
       <input

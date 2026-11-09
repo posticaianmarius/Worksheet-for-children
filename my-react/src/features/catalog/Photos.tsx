@@ -1,11 +1,13 @@
-import "./photos.css";
-import { useRef, useState } from "react";
 import { ImagePlus, Upload, X } from "lucide-react";
-import { useLanguage } from "../app/state";
-import { api, photoUrl } from "./api";
-import { Button, ErrorNotice, Modal } from "./ui";
-import { Resource, useResource } from "./resource";
-import type { Definition } from "./types";
+import { useRef, useState } from "react";
+import { photoUrl } from "../../shared/assets";
+import { useLanguage } from "../../shared/runtime";
+import { catalogApi } from "./api";
+import "./photos.css";
+
+import { Resource, useResource } from "../../shared/resource";
+import type { Definition } from "../../shared/types";
+import { Button, ErrorNotice, Modal } from "../../shared/ui";
 export function PhotoField({
   definition,
   slot = "activity-photo",
@@ -30,7 +32,7 @@ export function PhotoField({
     [library, setLibrary] = useState(false),
     [page, setPage] = useState(0);
   const slots = useResource(["image-slots", definition.id], () =>
-    api.slots(definition.id),
+    catalogApi.slots(definition.id),
   );
   const declared = definition.configurationSchema?.["x-image-slots"]?.[slot];
   const policy = slots.data?.find((item) => item.key === slot) ?? declared;
@@ -54,7 +56,7 @@ export function PhotoField({
     onBusy(true);
     setError(null);
     try {
-      onChange((await api.upload(definition.id, slot, file)).id);
+      onChange((await catalogApi.upload(definition.id, slot, file)).id);
     } catch (e) {
       setError(e);
     } finally {
@@ -160,7 +162,7 @@ function PhotoLibrary({
   onSelect: (id: number) => void;
 }) {
   const { t } = useLanguage();
-  const query = useResource(["images", page], () => api.images(page));
+  const query = useResource(["images", page], () => catalogApi.images(page));
   return (
     <Resource query={query}>
       {(data) => (

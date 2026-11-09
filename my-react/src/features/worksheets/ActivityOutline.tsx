@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
-import { createPortal } from "react-dom";
 import {
-  Copy,
-  Trash2,
-  Plus,
-  ArrowUp,
   ArrowDown,
+  ArrowUp,
+  Copy,
   GripVertical,
+  Plus,
+  Trash2,
 } from "lucide-react";
-import { useLanguage } from "../../app/state";
-import { Button } from "../../shared/ui";
+import type { PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { gameModules } from "../../games/registry";
+import { useLanguage } from "../../shared/runtime";
 import type { DraftItem } from "../../shared/types";
+import { Button } from "../../shared/ui";
 interface Gesture {
   key: string;
   pointerId: number;

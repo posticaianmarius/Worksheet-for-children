@@ -1,4 +1,4 @@
-import "./assignments.css";
+import { Play, Plus } from "lucide-react";
 import { lazy, Suspense, useState } from "react";
 import {
   Link,
@@ -7,9 +7,15 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { Play, Plus } from "lucide-react";
-import { useLanguage, useSession } from "../../app/state";
-import { api, canTeach } from "../../shared/api";
+import { canTeach } from "../../shared/identity";
+import { useLanguage, useSession } from "../../shared/runtime";
+import { attemptsApi } from "../attempts/api";
+import { worksheetsApi } from "../worksheets/api";
+import { assignmentsApi } from "./api";
+import "./assignments.css";
+
+import { Resource, useResource } from "../../shared/resource";
+import type { Assignment, Worksheet } from "../../shared/types";
 import {
   Button,
   Empty,
@@ -19,8 +25,6 @@ import {
   Page,
   Status,
 } from "../../shared/ui";
-import { Resource, useResource } from "../../shared/resource";
-import type { Assignment, Worksheet } from "../../shared/types";
 const Reports = lazy(() => import("./TeacherAssignments"));
 export default function Assignments() {
   const { user } = useSession();
@@ -36,7 +40,7 @@ function StudentAssignments() {
   const { t } = useLanguage(),
     navigate = useNavigate(),
     [params] = useSearchParams(),
-    query = useResource(["assignments"], api.assignments);
+    query = useResource(["assignments"], assignmentsApi.assignments);
   const [open, setOpen] = useState(params.has("join")),
     [code, setCode] = useState(() => {
       try {
@@ -51,7 +55,7 @@ function StudentAssignments() {
     if (!code.trim() || busy) return;
     setBusy(true);
     try {
-      const result = await api.joinWorksheet(code);
+      const result = await assignmentsApi.joinWorksheet(code);
       try {
         sessionStorage.removeItem("pending-worksheet-code");
       } catch {
@@ -133,8 +137,8 @@ export function AssignmentDetail({ personal = false }: { personal?: boolean }) {
     navigate = useNavigate();
   const query = useResource(["assignment-detail", id, personal], async () => {
     const [entry, history] = await Promise.all([
-      personal ? api.worksheet(id) : api.assignment(id),
-      api.history(id, personal),
+      personal ? worksheetsApi.worksheet(id) : assignmentsApi.assignment(id),
+      attemptsApi.history(id, personal),
     ]);
     return { entry, history };
   });
@@ -178,7 +182,7 @@ export function AssignmentDetail({ personal = false }: { personal?: boolean }) {
                         const active =
                           history.find(
                             (item) => item.status === "IN_PROGRESS",
-                          ) ?? (await api.start(id, personal));
+                          ) ?? (await attemptsApi.start(id, personal));
                         navigate("/attempts/" + active.id);
                       } catch (e) {
                         setError(e);
@@ -237,7 +241,7 @@ export function LegacyWorksheet() {
   const { worksheetId = "" } = useParams();
   const query = useResource(["legacy-worksheet", worksheetId], async () => {
     try {
-      await api.worksheet(worksheetId);
+      await worksheetsApi.worksheet(worksheetId);
       return { personal: true, id: 0 };
     } catch (error) {
       if (!(
@@ -246,7 +250,7 @@ export function LegacyWorksheet() {
         error.status === 404
       ))
         throw error;
-      const entry = (await api.assignments()).find(
+      const entry = (await assignmentsApi.assignments()).find(
         (item) => item.worksheet.id === Number(worksheetId) && !item.revokedAt,
       );
       if (!entry) throw error;

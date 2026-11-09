@@ -1,9 +1,12 @@
-import "./assignments.css";
+import { BookOpen, Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, BookOpen } from "lucide-react";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
+import { useLanguage } from "../../shared/runtime";
+import { worksheetsApi } from "../worksheets/api";
+import { assignmentsApi } from "./api";
+import "./assignments.css";
+
+import { Resource, useResource } from "../../shared/resource";
 import {
   Button,
   Confirm,
@@ -13,8 +16,7 @@ import {
   Page,
   Status,
 } from "../../shared/ui";
-import { Resource, useResource } from "../../shared/resource";
-import { AssignDialog } from "../worksheets/Sharing";
+import { AssignDialog } from "../assignments/Sharing";
 import { deliveries } from "./deliveries";
 export default function TeacherAssignments({
   classroomId,
@@ -31,10 +33,10 @@ export default function TeacherAssignments({
     [worksheet, setWorksheet] = useState<number | null>(null),
     [error, setError] = useState<unknown>(null);
   const query = useResource(["deliveries", history, classroomId], () =>
-    api.report(history, classroomId),
+    assignmentsApi.report(history, classroomId),
   );
   const sheets = useResource(["assign-worksheets", choose], () =>
-    choose ? api.worksheets() : Promise.resolve([]),
+    choose ? worksheetsApi.worksheets() : Promise.resolve([]),
   );
   const actions = (
     <div className="actions">
@@ -133,9 +135,11 @@ export default function TeacherAssignments({
                         description={t("assignment.closeHelp")}
                         onConfirm={async () => {
                           if (group.first.batchId)
-                            await api.removeAssignmentBatch(group.id);
+                            await assignmentsApi.removeAssignmentBatch(
+                              group.id,
+                            );
                           else
-                            await api.removeAssignmentGroup(
+                            await assignmentsApi.removeAssignmentGroup(
                               classroomId ??
                                 String(group.first.classroomId ?? "direct"),
                               group.first.revisionId,

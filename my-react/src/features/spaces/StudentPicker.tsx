@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { useLanguage } from "../../app/state";
-import { Button, ErrorNotice, Modal } from "../../shared/ui";
 import { Resource, useResource } from "../../shared/resource";
-import { useSpace } from "./SpaceContext";
+import { useLanguage, useSpace } from "../../shared/runtime";
+import { Button, ErrorNotice, Modal } from "../../shared/ui";
+
 import { spacesApi } from "./api";
 export function StudentPicker({
   classroomId,

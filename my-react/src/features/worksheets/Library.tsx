@@ -1,16 +1,18 @@
-import "./worksheets.css";
-import { useState } from "react";
 import {
+  ArrowUpRight,
   BookOpen,
   Plus,
   Search,
   Share2,
   Trash2,
-  ArrowUpRight,
 } from "lucide-react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
+import { useLanguage } from "../../shared/runtime";
+import { worksheetsApi } from "./api";
+import "./worksheets.css";
+
+import { Resource, useResource } from "../../shared/resource";
 import {
   Button,
   Confirm,
@@ -19,8 +21,7 @@ import {
   Modal,
   Page,
 } from "../../shared/ui";
-import { Resource, useResource } from "../../shared/resource";
-import { ShareDialog } from "./Sharing";
+import { ShareDialog } from "../assignments/Sharing";
 export default function Library() {
   const { t, language } = useLanguage(),
     navigate = useNavigate(),
@@ -30,7 +31,7 @@ export default function Library() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null),
     [share, setShare] = useState<number | null>(null);
-  const query = useResource(["worksheets"], api.worksheets),
+  const query = useResource(["worksheets"], worksheetsApi.worksheets),
     search = params.get("q") ?? "",
     sort = params.get("sort") ?? "recent";
   function filter(key: string, value: string) {
@@ -49,7 +50,7 @@ export default function Library() {
     setBusy(true);
     setError(null);
     try {
-      const sheet = await api.createWorksheet(name.trim());
+      const sheet = await worksheetsApi.createWorksheet(name.trim());
       navigate("/teacher/" + sheet.id);
     } catch (e) {
       setError(e);
@@ -169,7 +170,7 @@ export default function Library() {
                           "This removes the editable worksheet. This action cannot be undone.",
                         )}
                         onConfirm={async () => {
-                          await api.deleteWorksheet(sheet.id);
+                          await worksheetsApi.deleteWorksheet(sheet.id);
                           await query.refetch();
                         }}
                       >

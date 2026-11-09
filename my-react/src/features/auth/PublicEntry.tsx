@@ -1,9 +1,14 @@
-import "./auth.css";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useLanguage, useSession } from "../../app/state";
-import { pendingWork } from "../assignments/DeliveryEntry";
-import { api, canTeach, ApiError } from "../../shared/api";
+import { ApiError } from "../../shared/http";
+import { canTeach } from "../../shared/identity";
+import { pendingWork } from "../../shared/navigation";
+import { useLanguage, useSession } from "../../shared/runtime";
+import { assignmentsApi } from "../assignments/api";
+import { attemptsApi } from "../attempts/api";
+import { authApi } from "./api";
+import "./auth.css";
+
 import { Brand } from "../../shared/Brand";
 import { Button, ErrorNotice } from "../../shared/ui";
 export default function PublicEntry() {
@@ -28,7 +33,7 @@ export default function PublicEntry() {
     if (!qrCode || qrStarted.current) return;
     qrStarted.current = true;
     window.history.replaceState(null, "", window.location.pathname);
-    void api
+    void authApi
       .studentLogin(qrCode)
       .then(() => window.location.replace(pendingWork() ?? "/student"))
       .catch((e) => {
@@ -46,22 +51,22 @@ export default function PublicEntry() {
     setError(null);
     try {
       if (!code.trim()) {
-        await api.studentLogin(studentCode);
+        await authApi.studentLogin(studentCode);
         await refresh();
         navigate(pendingWork() ?? "/student", { replace: true });
         return;
       }
-      const joined = await api.enterGame(studentCode, code);
+      const joined = await assignmentsApi.enterGame(studentCode, code);
       await refresh();
-      const history = await api.history(joined.assignmentId);
+      const history = await attemptsApi.history(joined.assignmentId);
       const attempt =
         history.find((item) => item.status === "IN_PROGRESS") ??
-        (await api.start(joined.assignmentId));
+        (await attemptsApi.start(joined.assignmentId));
       navigate("/attempts/" + attempt.id);
     } catch (e) {
       if (e instanceof ApiError && e.status === 409 && code.trim()) {
         try {
-          await api.studentLogin(studentCode);
+          await authApi.studentLogin(studentCode);
           sessionStorage.setItem("playsheets.worksheet-choice", code.trim());
           await refresh();
           navigate("/student", { replace: true });

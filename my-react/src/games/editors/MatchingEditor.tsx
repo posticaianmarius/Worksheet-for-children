@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from "lucide-react";
-import { useLanguage } from "../../app/state";
+import { useLanguage } from "../../shared/runtime";
 import { Button } from "../../shared/ui";
 import type { EditorProps } from "../registry";
 export default function MatchingEditor({

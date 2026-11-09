@@ -1,18 +1,23 @@
-import "./worksheets.css";
-import { useEffect, useReducer, useRef, useState } from "react";
-import { Link, useBlocker, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  ClipboardList,
   Eye,
+  List,
+  Plus,
   Save,
   Share2,
   Undo2,
-  Plus,
-  List,
-  ClipboardList,
 } from "lucide-react";
-import { useLanguage, useSession } from "../../app/state";
-import { api } from "../../shared/api";
+import { Link, useParams } from "react-router-dom";
+import { catalogApi } from "../catalog/api";
+import { worksheetsApi } from "./api";
+import { useWorksheetEditor } from "./useWorksheetEditor";
+import "./worksheets.css";
+
+import GamePlayer from "../../games/Player";
+import { gameModules, supports } from "../../games/registry";
+import { Resource, useResource } from "../../shared/resource";
+import type { Definition, Worksheet } from "../../shared/types";
 import {
   Button,
   Dropdown,
@@ -21,29 +26,16 @@ import {
   MenuAction,
   Modal,
 } from "../../shared/ui";
-import { Resource, useResource } from "../../shared/resource";
-import type { Definition, DraftItem, Worksheet } from "../../shared/types";
-import { gameModules, supports } from "../../games/registry";
-import GamePlayer from "../../games/Player";
-import SettingsInspector from "./SettingsInspector";
-import { saveDraft } from "../../platform/game-model.js";
-import {
-  draftReducer,
-  fingerprint,
-  fromWorksheet,
-  readRecovery,
-  recoveryKey,
-} from "./draft";
-import type { Recovery } from "./draft";
-import { validateConfiguration } from "./validation";
+import { AssignDialog, ShareDialog } from "../assignments/Sharing";
 import ActivityOutline from "./ActivityOutline";
-import { AssignDialog, ShareDialog } from "./Sharing";
+import SettingsInspector from "./SettingsInspector";
+import { fingerprint } from "./draft";
 export default function Editor() {
   const { worksheetId = "" } = useParams();
   const query = useResource(["editor", worksheetId], async () => {
     const [worksheet, definitions] = await Promise.all([
-      api.worksheet(worksheetId),
-      api.definitions(),
+      worksheetsApi.worksheet(worksheetId),
+      catalogApi.definitions(),
     ]);
     return {
       worksheet: {
@@ -77,195 +69,47 @@ function WorksheetEditor({
   initial: Worksheet;
   definitions: Definition[];
 }) {
-  const { t } = useLanguage(),
-    { user } = useSession();
-  const [draft, dispatch] = useReducer(draftReducer, initial, fromWorksheet);
-  const state = useRef(draft),
-    base = useRef(fingerprint(initial)),
-    saveLock = useRef(false);
-  const recoveryCopy = useRef<{
-    worksheet: Worksheet;
-    items: DraftItem[];
-  } | null>(null);
-  const key = recoveryKey(user!.id, initial.id);
-  const [recovery, setRecovery] = useState<Recovery | null>(() => {
-    try {
-      return readRecovery(localStorage, key);
-    } catch {
-      return null;
-    }
-  });
-  const [storageError, setStorageError] = useState(false),
-    [saving, setSaving] = useState(false),
-    [photoBusy, setPhotoBusy] = useState(false),
-    [error, setError] = useState<unknown>(null),
-    [notice, setNotice] = useState("");
-  const [adding, setAdding] = useState(false),
-    [outlineOpen, setOutlineOpen] = useState(false),
-    [tab, setTab] = useState<"settings" | "preview">("settings"),
-    [fullPreview, setFullPreview] = useState(false),
-    [previewIndex, setPreviewIndex] = useState(0);
-  const [sharing, setSharing] = useState(false),
-    [assigning, setAssigning] = useState(false),
-    [pending, setPending] = useState<"share" | "assign" | null>(null);
-  const blocker = useBlocker(draft.dirty || saving || photoBusy);
-  useEffect(() => {
-    state.current = draft;
-  });
-  useEffect(() => {
-    if (recovery) return;
-    try {
-      if (draft.dirty)
-        localStorage.setItem(
-          key,
-          JSON.stringify({
-            version: 1,
-            updated: Date.now(),
-            base: base.current,
-            draft,
-          }),
-        );
-      else localStorage.removeItem(key);
-    } catch {
-      queueMicrotask(() => setStorageError(true));
-    }
-  }, [draft, key, recovery]);
-  useEffect(() => {
-    if (!draft.dirty && !saving && !photoBusy) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = true;
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [draft.dirty, saving, photoBusy]);
-  const available = Object.keys(gameModules).flatMap((type) => {
-    const definition = definitions
-      .filter(
-        (def) =>
-          def.type === type &&
-          def.active !== false &&
-          supports(type, def.version),
-      )
-      .sort((a, b) => b.version - a.version)[0];
-    return definition ? [definition] : [];
-  });
-  const active = draft.items.find((item) => item.key === draft.selected),
-    definition = active?.definition;
-  const photoDefinition = definition?.configurationSchema?.["x-image-slots"]?.[
-    "activity-photo"
-  ]
-    ? definition
-    : definitions.find(
-        (def) =>
-          def.type === definition?.type &&
-          def.version === 3 &&
-          def.active !== false &&
-          !!def.configurationSchema?.["x-image-slots"]?.["activity-photo"],
-      );
-  const disabled = saving || photoBusy;
-  async function save() {
-    if (saveLock.current || photoBusy) return false;
-    const current = state.current;
-    if (!current.name.trim()) {
-      setError(new Error(t("Enter a worksheet name.")));
-      return false;
-    }
-    for (const item of current.items) {
-      if (item.definition) {
-        const issue = validateConfiguration(
-          item.definition,
-          item.configuration,
-        );
-        if (issue) {
-          setError(new Error(issue));
-          dispatch({ type: "select", key: item.key });
-          return false;
-        }
-      }
-    }
-    saveLock.current = true;
-    setSaving(true);
-    setError(null);
-    setNotice("");
-    try {
-      await saveDraft(
-        {
-          renameWorksheet: api.renameWorksheet,
-          deleteItem: api.deleteItem,
-          saveItem: api.saveItem,
-        },
-        initial.id,
-        { name: current.name, items: current.items },
-        current.removed,
-        (clientKey: string, item: DraftItem) =>
-          dispatch({
-            type: "savedItem",
-            key: clientKey,
-            id: item.id!,
-            orderIndex: item.orderIndex,
-          }),
-        (id: number) => dispatch({ type: "deleted", id }),
-      );
-      const saved = await api.worksheet(initial.id);
-      base.current = fingerprint(saved);
-      dispatch({ type: "saved" });
-      setNotice(t("editor.savedNotice"));
-      return true;
-    } catch (e) {
-      setError(e);
-      try {
-        base.current = fingerprint(await api.worksheet(initial.id));
-      } catch {
-        /* Keep the previous comparison snapshot while offline. */
-      }
-      return false;
-    } finally {
-      saveLock.current = false;
-      setSaving(false);
-    }
-  }
-  const saveRef = useRef(save);
-  useEffect(() => {
-    saveRef.current = save;
-  });
-  useEffect(() => {
-    const shortcut = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-        event.preventDefault();
-        if (!event.repeat) void saveRef.current();
-      }
-    };
-    window.addEventListener("keydown", shortcut);
-    return () => window.removeEventListener("keydown", shortcut);
-  }, []);
-  function requestShare(action: "share" | "assign") {
-    if (draft.dirty) {
-      setPending(action);
-      return;
-    }
-    if (action === "share") setSharing(true);
-    else setAssigning(true);
-  }
-  function update(configuration: DraftItem["configuration"], photo = false) {
-    if (!active) return;
-    dispatch({
-      type: "update",
-      key: active.key,
-      patch: {
-        configuration,
-        ...(photo && photoDefinition
-          ? { miniGameId: photoDefinition.id, definition: photoDefinition }
-          : {}),
-      },
-    });
-  }
-  function move(clientKey: string, index: number) {
-    dispatch({ type: "move", key: clientKey, index });
-    setNotice(
-      t("Activity moved to position {position}", { position: index + 1 }),
-    );
-  }
+  const {
+    t,
+    draft,
+    dispatch,
+    recovery,
+    setRecovery,
+    key,
+    saving,
+    error,
+    notice,
+    storageError,
+    setPhotoBusy,
+    adding,
+    setAdding,
+    outlineOpen,
+    setOutlineOpen,
+    tab,
+    setTab,
+    fullPreview,
+    setFullPreview,
+    previewIndex,
+    setPreviewIndex,
+    sharing,
+    setSharing,
+    assigning,
+    setAssigning,
+    pending,
+    setPending,
+    available,
+    active,
+    definition,
+    photoDefinition,
+    disabled,
+    save,
+    requestShare,
+    update,
+    move,
+    recoverCopy,
+    previewItem,
+    blocker,
+  } = useWorksheetEditor(initial, definitions);
   const outline = (
     <ActivityOutline
       items={draft.items}
@@ -287,57 +131,6 @@ function WorksheetEditor({
       onAdd={() => setAdding(true)}
     />
   );
-  async function recoverCopy() {
-    if (!recovery || saveLock.current) return;
-    saveLock.current = true;
-    setSaving(true);
-    setError(null);
-    try {
-      if (!recoveryCopy.current) {
-        const worksheet = await api.createWorksheet(
-          recovery.draft.name + " (recovered)",
-        );
-        recoveryCopy.current = {
-          worksheet,
-          items: recovery.draft.items.map((item) => ({
-            ...structuredClone(item),
-            id: undefined,
-          })),
-        };
-      }
-      const copy = recoveryCopy.current;
-      await saveDraft(
-        {
-          renameWorksheet: api.renameWorksheet,
-          deleteItem: api.deleteItem,
-          saveItem: api.saveItem,
-        },
-        copy.worksheet.id,
-        { name: copy.worksheet.name, items: copy.items },
-        [],
-        (key: string, saved: DraftItem) => {
-          copy.items = copy.items.map((item) =>
-            item.key === key
-              ? { ...item, id: saved.id, orderIndex: saved.orderIndex }
-              : item,
-          );
-        },
-        () => {},
-      );
-      try {
-        localStorage.removeItem(key);
-      } catch {
-        /* Server recovery succeeded even without browser storage. */
-      }
-      window.location.assign("/teacher/" + copy.worksheet.id);
-    } catch (error) {
-      setError(error);
-    } finally {
-      saveLock.current = false;
-      setSaving(false);
-    }
-  }
-  const previewItem = fullPreview ? draft.items[previewIndex] : active;
   return (
     <main className="editor-page" aria-busy={disabled}>
       <header className="editor-toolbar">

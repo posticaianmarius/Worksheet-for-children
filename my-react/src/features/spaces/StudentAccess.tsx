@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { useLanguage } from "../../app/state";
-import { Button, ErrorNotice, Loading, Modal } from "../../shared/ui";
+import { useEffect, useState } from "react";
 import { Brand } from "../../shared/Brand";
+import { useLanguage, useSpace } from "../../shared/runtime";
 import type { AccessCard, SpaceStudent } from "../../shared/types";
-import { useSpace } from "./SpaceContext";
+import { Button, ErrorNotice, Loading, Modal } from "../../shared/ui";
+
 import { spacesApi } from "./api";
 export function LoginCard({ card }: { card: AccessCard }) {
   const { t } = useLanguage(),

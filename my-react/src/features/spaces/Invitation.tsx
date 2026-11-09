@@ -1,24 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useLanguage, useSession } from "../../app/state";
 import { Brand } from "../../shared/Brand";
+import { useLanguage, useSession, useSpace } from "../../shared/runtime";
 import { Button, ErrorNotice } from "../../shared/ui";
-import { useSpace } from "./SpaceContext";
+import { clearInvitation, pendingInvitation } from "./invitation-state";
+
 import { spacesApi } from "./api";
-export function pendingInvitation() {
-  try {
-    return sessionStorage.getItem("playsheets.invitation") ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
-export function clearInvitation() {
-  try {
-    sessionStorage.removeItem("playsheets.invitation");
-  } catch {
-    /* optional storage */
-  }
-}
 export default function Invitation() {
   const { t } = useLanguage(),
     { user } = useSession(),

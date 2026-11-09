@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { saveDraft } from "../src/platform/game-model.js";
-import { translate } from "../src/platform/translations.js";
+import { saveDraft } from "../src/features/worksheets/save.ts";
+import { translate } from "../src/shared/i18n/legacy.ts";
 
 test("a failed save can retry without repeating successful removals or creating duplicate items", async () => {
   const draft = { name: "Retry", items: [{ key: "a" }, { key: "b" }] };

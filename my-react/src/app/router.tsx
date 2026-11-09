@@ -1,6 +1,6 @@
-import { Loading } from "../shared/ui";
-import StudentLayout from "../features/student/StudentLayout";
 import { createBrowserRouter } from "react-router-dom";
+import StudentLayout from "../features/student/StudentLayout";
+import { Loading } from "../shared/ui";
 import {
   AttemptLayout,
   NotFound,

@@ -1,4 +1,4 @@
-import { useLanguage } from "../../app/state";
+import { useLanguage } from "../../shared/runtime";
 import type { EditorProps } from "../registry";
 export default function LetterEditor({
   configuration,

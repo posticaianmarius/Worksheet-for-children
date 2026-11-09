@@ -1,18 +1,20 @@
+import { ArrowLeft, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Check, ArrowLeft } from "lucide-react";
-import { useLanguage, useSession } from "../../app/state";
-import { api } from "../../shared/api";
-import { Button, ErrorNotice, Page, Status } from "../../shared/ui";
-import { Resource, useResource } from "../../shared/resource";
-import type { Attempt as AttemptData, GameResult } from "../../shared/types";
+import { useLanguage, useSession } from "../../shared/runtime";
+import { attemptsApi } from "./api";
+import { remainingItems } from "./model";
+
+import { maximumScore } from "../../games/engine";
 import GamePlayer from "../../games/Player";
 import { gameModules, preloadGame } from "../../games/registry";
-import { maximumScore } from "../../games/engine";
-import { SoundButton } from "../../app/Layout";
+import { Resource, useResource } from "../../shared/resource";
+import { SoundButton } from "../../shared/SoundButton";
+import type { Attempt as AttemptData, GameResult } from "../../shared/types";
+import { Button, ErrorNotice, Page, Status } from "../../shared/ui";
 export default function Attempt() {
   const { id = "" } = useParams();
-  const query = useResource(["attempt", id], () => api.attempt(id));
+  const query = useResource(["attempt", id], () => attemptsApi.attempt(id));
   return (
     <Resource query={query}>
       {(attempt) => <AttemptContent key={attempt.id} initial={attempt} />}
@@ -26,12 +28,7 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null),
     saving = useRef(false);
-  const pending = [...attempt.items]
-      .sort((a, b) => a.orderIndex - b.orderIndex)
-      .filter(
-        (item) =>
-          !attempt.results.some((result) => result.revisionItemId === item.id),
-      ),
+  const pending = remainingItems(attempt),
     item = pending[0];
   const nextType = pending[1]?.definition?.type;
   useEffect(() => {
@@ -52,7 +49,7 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
     setBusy(true);
     setError(null);
     try {
-      const saved = await api.result(attempt.id, item.id, result);
+      const saved = await attemptsApi.result(attempt.id, item.id, result);
       setAttempt((current) => ({
         ...current,
         results: [
@@ -77,7 +74,7 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
     setBusy(true);
     setError(null);
     try {
-      setAttempt(await api.complete(attempt.id));
+      setAttempt(await attemptsApi.complete(attempt.id));
     } catch (e) {
       setError(e);
     } finally {

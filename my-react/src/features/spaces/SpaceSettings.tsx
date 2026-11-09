@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useLanguage, useSession } from "../../app/state";
-import { Button, Confirm, ErrorNotice, Page } from "../../shared/ui";
 import { Resource, useResource } from "../../shared/resource";
-import { useSpace } from "./SpaceContext";
+import { useLanguage, useSession, useSpace } from "../../shared/runtime";
+import { Button, Confirm, ErrorNotice, Page } from "../../shared/ui";
+
 import { spacesApi } from "./api";
 export default function SpaceSettings() {
   const { context, refresh } = useSpace(),
@@ -14,7 +14,7 @@ export default function SpaceSettings() {
     context!.owner ? spacesApi.invitations(space) : Promise.resolve([]),
   );
   const [name, setName] = useState(
-      context?.spaces.find((s) => s.id === space)?.name??"",
+      context?.spaces.find((s) => s.id === space)?.name ?? "",
     ),
     [link, setLink] = useState(""),
     [error, setError] = useState<unknown>(null),

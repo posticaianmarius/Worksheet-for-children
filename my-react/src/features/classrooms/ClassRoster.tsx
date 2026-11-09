@@ -1,20 +1,23 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
-import { Button, Confirm, Empty, SortHeading } from "../../shared/ui";
-import { useSort } from "../../shared/sorting";
+import { useLanguage } from "../../shared/runtime";
+import { classroomsApi } from "./api";
+
 import { Resource, useResource } from "../../shared/resource";
+import { useSpace } from "../../shared/runtime";
+import { useSort } from "../../shared/sorting";
 import type { Classroom, Member, SpaceStudent } from "../../shared/types";
-import { useSpace } from "../spaces/SpaceContext";
-import { StudentPicker } from "../spaces/StudentPicker";
+import { Button, Confirm, Empty, SortHeading } from "../../shared/ui";
 import { StudentAccess } from "../spaces/StudentAccess";
+import { StudentPicker } from "../spaces/StudentPicker";
 export default function ClassRoster({ classroom }: { classroom: Classroom }) {
   const { t, language } = useLanguage(),
     { context } = useSpace(),
     id = String(classroom.id);
   const sorting = useSort<Member>("name", { name: (m) => m.name }, language);
-  const query = useResource(["class-members", id], () => api.members(id));
+  const query = useResource(["class-members", id], () =>
+    classroomsApi.members(id),
+  );
   const [search, setSearch] = useState(""),
     [former, setFormer] = useState(!!classroom.archivedAt),
     [adding, setAdding] = useState(false),
@@ -53,7 +56,7 @@ export default function ClassRoster({ classroom }: { classroom: Classroom }) {
                 )}
                 confirmLabel={t("Remove from class")}
                 onConfirm={async () => {
-                  await api.removeMember(id, member.userId);
+                  await classroomsApi.removeMember(id, member.userId);
                   await query.refetch();
                 }}
               >

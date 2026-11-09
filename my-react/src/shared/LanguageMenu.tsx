@@ -1,4 +1,4 @@
-import { useLanguage } from "../app/state";
+import { useLanguage } from "./runtime";
 import { Dropdown, MenuAction } from "./ui";
 export function LanguageMenu() {
   const { language, setLanguage, t } = useLanguage();

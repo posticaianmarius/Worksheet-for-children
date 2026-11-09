@@ -6,9 +6,10 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 
 import { ArrowUpRight, Plus, Trash2, Users } from "lucide-react";
 
-import { useLanguage, useSession } from "../../app/state";
+import { useLanguage, useSession } from "../../shared/runtime";
 
-import { api, canTeach } from "../../shared/api";
+import { canTeach } from "../../shared/identity";
+import { classroomsApi } from "./api";
 
 import {
   Button,
@@ -26,7 +27,7 @@ export default function Classes() {
     { user } = useSession(),
     teacher = canTeach(user),
     navigate = useNavigate(),
-    query = useResource(["classes"], api.classes);
+    query = useResource(["classes"], classroomsApi.classes);
 
   const [search, setSearch] = useState(""),
     [archived, setArchived] = useState(false),
@@ -42,8 +43,8 @@ export default function Classes() {
 
     try {
       const classroom = teacher
-        ? await api.createClass(value.trim())
-        : await api.joinClass(value);
+        ? await classroomsApi.createClass(value.trim())
+        : await classroomsApi.joinClass(value);
 
       navigate("/classes/" + classroom.id);
     } catch (e) {
@@ -139,7 +140,7 @@ export default function Classes() {
                         )}
 
                         onConfirm={async () => {
-                          await api.deleteClass(item.id);
+                          await classroomsApi.deleteClass(item.id);
 
                           await query.refetch();
                         }}
@@ -219,7 +220,7 @@ export function LegacyClass() {
   const { className, kidName } = useParams();
 
   const query = useResource(["legacy-class", className, kidName], async () => {
-    const classroom = (await api.classes()).find(
+    const classroom = (await classroomsApi.classes()).find(
       (item) => item.name === className,
     );
 
@@ -227,7 +228,7 @@ export function LegacyClass() {
 
     if (!kidName) return "/classes/" + classroom.id;
 
-    const student = (await api.members(classroom.id)).find(
+    const student = (await classroomsApi.members(classroom.id)).find(
       (item) => item.name === kidName,
     );
 

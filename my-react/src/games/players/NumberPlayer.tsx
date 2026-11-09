@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
-import { useLanguage, usePreferences } from "../../app/state";
-import { createQuestion, exerciseCount } from "../engine";
+import { useEffect, useRef, useState } from "react";
+import { useLanguage, usePreferences } from "../../shared/runtime";
 import type { Answer } from "../engine";
+import { createQuestion, exerciseCount } from "../engine";
+import { playAnswerFeedback } from "../feedback";
 import type { PlayerProps } from "../registry";
-import { playAnswerFeedback } from "../../lib/game-feedback.js";
 const classNames: Record<string, string> = {
   "math-game": "math",
   "sequence-game": "sequence",

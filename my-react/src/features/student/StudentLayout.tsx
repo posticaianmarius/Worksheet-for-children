@@ -1,20 +1,19 @@
-import "./student.css";
-import { useSpace } from "../spaces/SpaceContext";
+import { BookOpen, CircleCheck, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   Link,
   Navigate,
   NavLink,
   Outlet,
-  useNavigate,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
-import { BookOpen, CircleCheck, Settings } from "lucide-react";
-import { useLanguage, useSession } from "../../app/state";
-import { RequireSession } from "../../app/guards";
 import { Brand } from "../../shared/Brand";
 import { LanguageMenu } from "../../shared/LanguageMenu";
+import { RequireSession } from "../../shared/RequireSession";
+import { useLanguage, useSession, useSpace } from "../../shared/runtime";
 import { Button, ErrorNotice } from "../../shared/ui";
+import "./student.css";
 
 export function StudentHeader() {
   const { context } = useSpace();

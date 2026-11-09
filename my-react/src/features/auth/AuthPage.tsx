@@ -1,11 +1,13 @@
-import "./auth.css";
-import { pendingInvitation, clearInvitation } from "../spaces/Invitation";
+import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
-import { api, canTeach } from "../../shared/api";
+import { canTeach } from "../../shared/identity";
+import { clearInvitation, pendingInvitation } from "../spaces/invitation-state";
+import { authApi } from "./api";
+import "./auth.css";
+
 import { Brand } from "../../shared/Brand";
-import { useLanguage, useSession } from "../../app/state";
+import { useLanguage, useSession } from "../../shared/runtime";
 import { Button, ErrorNotice } from "../../shared/ui";
 export default function AuthPage() {
   const { pathname, state } = useLocation(),
@@ -30,13 +32,13 @@ export default function AuthPage() {
     setError(null);
     try {
       const user = signup
-        ? await api.signup(
+        ? await authApi.signup(
             name.trim(),
             email.trim(),
             password,
             pendingInvitation(),
           )
-        : await api.login(email.trim(), password);
+        : await authApi.login(email.trim(), password);
       const invited = signup && !!pendingInvitation();
       if (invited) clearInvitation();
       await refresh();

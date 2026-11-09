@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import { useLanguage } from "../../app/state";
-import { Loading } from "../../shared/ui";
-import { PhotoField } from "../../shared/Photos";
-import type { Configuration, Definition } from "../../shared/types";
 import { gameModules } from "../../games/registry";
-import { setAtPath } from "../../platform/game-model.js";
+import { setAtPath } from "../../shared/configuration";
+import { useLanguage } from "../../shared/runtime";
+import type { Configuration, Definition } from "../../shared/types";
+import { Loading } from "../../shared/ui";
+import { PhotoField } from "../catalog/Photos";
 export default function SettingsInspector({
   definition,
   configuration,

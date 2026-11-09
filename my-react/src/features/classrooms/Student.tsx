@@ -1,20 +1,22 @@
-import "./classrooms.css";
 import { Link, useParams } from "react-router-dom";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
-import { Breadcrumbs, Page, Empty, SortHeading, Status } from "../../shared/ui";
+import { useLanguage } from "../../shared/runtime";
+import { attemptsApi } from "../attempts/api";
+import { classroomsApi } from "./api";
+import "./classrooms.css";
+
+import { gameModules } from "../../games/registry";
 import { Resource, useResource } from "../../shared/resource";
 import { percentage, timestamp, useSort } from "../../shared/sorting";
 import type { StudentTest } from "../../shared/types";
-import { gameModules } from "../../games/registry";
+import { Breadcrumbs, Empty, Page, SortHeading, Status } from "../../shared/ui";
 export default function Student() {
   const { id = "", userId = "" } = useParams(),
     { t, language } = useLanguage();
   const query = useResource(["student", id, userId], async () => {
     const [classroom, student, tests] = await Promise.all([
-      api.classroom(id),
-      api.student(id, userId),
-      api.studentTests(id, userId),
+      classroomsApi.classroom(id),
+      classroomsApi.student(id, userId),
+      classroomsApi.studentTests(id, userId),
     ]);
     return { classroom, student, tests };
   });
@@ -118,11 +120,11 @@ export function StudentResult() {
   const query = useResource(
     ["student-result", id, userId, attemptId],
     async () => {
-      const tests = await api.studentTests(id, userId),
+      const tests = await classroomsApi.studentTests(id, userId),
         test = tests.find((item) => item.attemptId === Number(attemptId));
       if (!test)
         throw new Error(t("This test does not belong to this student."));
-      return { test, attempt: await api.attempt(attemptId) };
+      return { test, attempt: await attemptsApi.attempt(attemptId) };
     },
   );
   return (

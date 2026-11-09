@@ -1,4 +1,4 @@
-const romanian = {
+const romanian: Record<string, string> = {
   "No deleted homework.": "Nu există teme șterse.",
   "Show deleted homework": "Arată temele șterse",
   "Hide deleted homework": "Ascunde temele șterse",
@@ -397,7 +397,11 @@ const romanian = {
 const english = Object.fromEntries(
   Object.entries(romanian).map(([en, ro]) => [ro, en]),
 );
-export function translate(language, text, values = {}) {
+export function translate(
+  language: string,
+  text: string,
+  values: Record<string, unknown> = {},
+) {
   const key = Object.hasOwn(romanian, text) ? text : english[text] || text;
   const translated = language === "ro" ? romanian[key] || key : key;
   return translated.replace(/\{(\w+)\}/g, (match, name) =>

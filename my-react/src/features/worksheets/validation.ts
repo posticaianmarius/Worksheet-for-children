@@ -1,5 +1,5 @@
 import Ajv2020 from "ajv/dist/2020.js";
-import type { Definition, Configuration } from "../../shared/types";
+import type { Configuration, Definition } from "../../shared/types";
 const ajv = new Ajv2020({
   allErrors: true,
   strict: false,

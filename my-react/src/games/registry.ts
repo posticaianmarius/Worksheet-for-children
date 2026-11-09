@@ -1,5 +1,5 @@
-import { lazy } from "react";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
+import { lazy } from "react";
 import type { Configuration, Schema } from "../shared/types";
 export interface PlayerProps {
   type: string;

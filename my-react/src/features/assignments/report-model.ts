@@ -1,5 +1,15 @@
-export function groupAssignmentReport(classes, rows) {
-  const groups = new Map(
+import type { Classroom, ReportRow } from "../../shared/types";
+interface WorksheetRows extends ReportRow {
+  id: string;
+  rows: ReportRow[];
+}
+interface ClassRows {
+  id: string;
+  name: string;
+  worksheets: Map<string, WorksheetRows>;
+}
+export function groupAssignmentReport(classes: Classroom[], rows: ReportRow[]) {
+  const groups = new Map<string, ClassRows>(
     classes.map((classroom) => [
       String(classroom.id),
       { id: String(classroom.id), name: classroom.name, worksheets: new Map() },
@@ -14,7 +24,7 @@ export function groupAssignmentReport(classes, rows) {
         name: row.classroomName,
         worksheets: new Map(),
       });
-    const classroom = groups.get(classId);
+    const classroom = groups.get(classId)!;
     const revisionId = String(row.revisionId);
     if (!classroom.worksheets.has(revisionId))
       classroom.worksheets.set(revisionId, {
@@ -22,16 +32,16 @@ export function groupAssignmentReport(classes, rows) {
         id: revisionId,
         rows: [],
       });
-    classroom.worksheets.get(revisionId).rows.push(row);
+    classroom.worksheets.get(revisionId)!.rows.push(row);
   }
   return [...groups.values()].map((classroom) => ({
     ...classroom,
     worksheets: [...classroom.worksheets.values()]
       .map((worksheet) => {
-        const students = new Map();
+        const students = new Map<number, ReportRow[]>();
         for (const row of worksheet.rows) {
           if (!students.has(row.userId)) students.set(row.userId, []);
-          students.get(row.userId).push(row);
+          students.get(row.userId)!.push(row);
         }
         const recipients = [...students.values()].map((entries) => {
           const active = entries.filter((entry) => !entry.revokedAt);
@@ -45,7 +55,7 @@ export function groupAssignmentReport(classes, rows) {
             .filter((entry) => entry.completedAt)
             .sort(
               (a, b) =>
-                Date.parse(b.completedAt) - Date.parse(a.completedAt) ||
+                Date.parse(b.completedAt!) - Date.parse(a.completedAt!) ||
                 (b.attemptId ?? b.assignmentId) -
                   (a.attemptId ?? a.assignmentId),
             )[0];

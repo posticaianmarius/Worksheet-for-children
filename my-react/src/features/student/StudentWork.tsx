@@ -1,14 +1,21 @@
-import WorksheetChooser from "./WorksheetChooser";
-import { useSpace, SpaceSwitcher } from "../spaces/SpaceContext";
+import { BookOpen, CircleCheck, Play } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Play, CircleCheck } from "lucide-react";
-import { useLanguage, usePreferences, useSession } from "../../app/state";
-import { api } from "../../shared/api";
+import {
+  useLanguage,
+  usePreferences,
+  useSession,
+  useSpace,
+} from "../../shared/runtime";
+import { assignmentsApi } from "../assignments/api";
+import { attemptsApi } from "../attempts/api";
+import { SpaceSwitcher } from "../spaces/SpaceContext";
+import WorksheetChooser from "./WorksheetChooser";
+
 import { LanguageMenu } from "../../shared/LanguageMenu";
-import { Button, Empty, ErrorNotice, Page, Status } from "../../shared/ui";
 import { Resource, useResource } from "../../shared/resource";
 import type { Assignment } from "../../shared/types";
+import { Button, Empty, ErrorNotice, Page, Status } from "../../shared/ui";
 
 export default function StudentWork({
   finished = false,
@@ -27,7 +34,7 @@ export default function StudentWork({
   const { user } = useSession(),
     { t } = useLanguage(),
     navigate = useNavigate();
-  const query = useResource(["student-work"], api.assignments);
+  const query = useResource(["student-work"], assignmentsApi.assignments);
   const [busy, setBusy] = useState<number | null>(null),
     [error, setError] = useState<unknown>(null);
   async function start(assignment: Assignment) {
@@ -35,10 +42,10 @@ export default function StudentWork({
     setBusy(assignment.id);
     setError(null);
     try {
-      const history = await api.history(assignment.id);
+      const history = await attemptsApi.history(assignment.id);
       const attempt =
         history.find((item) => item.status === "IN_PROGRESS") ??
-        (await api.start(assignment.id));
+        (await attemptsApi.start(assignment.id));
       navigate("/attempts/" + attempt.id);
     } catch (error) {
       setError(error);

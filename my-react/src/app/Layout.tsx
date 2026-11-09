@@ -1,28 +1,16 @@
-import "./layout.css";
-import "../features/spaces/spaces.css";
-import { SpaceSwitcher } from "../features/spaces/SpaceContext";
-import { Brand } from "../shared/Brand";
-import { LanguageMenu } from "../shared/LanguageMenu";
-import { RequireSession } from "./guards";
 import {
-  StudentHeader,
-  StudentWorkspace,
-} from "../features/student/StudentLayout";
-import { useEffect, useState } from "react";
-import {
+  ArrowUpRight,
   BookOpen,
-  House,
-  Users,
-  ClipboardList,
   ChartNoAxesCombined,
-  Settings,
+  ClipboardList,
+  House,
+  Menu as MenuIcon,
   PanelLeftClose,
   PanelLeftOpen,
-  ArrowUpRight,
-  Volume2,
-  VolumeX,
-  Menu as MenuIcon,
+  Settings,
+  Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   Link,
   NavLink,
@@ -30,15 +18,24 @@ import {
   ScrollRestoration,
   useLocation,
 } from "react-router-dom";
-import { canTeach } from "../shared/api";
-import { Button, ErrorNotice, Modal } from "../shared/ui";
+import { SpaceSwitcher } from "../features/spaces/SpaceContext";
+import "../features/spaces/spaces.css";
+import {
+  StudentHeader,
+  StudentWorkspace,
+} from "../features/student/StudentLayout";
+import { Brand } from "../shared/Brand";
+import { canTeach } from "../shared/identity";
+import { LanguageMenu } from "../shared/LanguageMenu";
+import { RequireSession } from "../shared/RequireSession";
 import {
   readStorage,
   useLanguage,
-  usePreferences,
   useSession,
   writeStorage,
-} from "./state";
+} from "../shared/runtime";
+import { Button, ErrorNotice, Modal } from "../shared/ui";
+import "./layout.css";
 export function PublicHeader({ minimal = false }: { minimal?: boolean }) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null);
@@ -147,7 +144,7 @@ export function Workspace() {
       ? [{ to: "/sheets", label: "Worksheets", Icon: BookOpen }]
       : []),
     { to: "/classes", label: "Classes", Icon: Users },
-    ...(user?.role==="TEACHER"
+    ...(user?.role === "TEACHER"
       ? [
           { to: "/students", label: "Students", Icon: Users },
           { to: "/space", label: "Teaching space", Icon: Settings },
@@ -302,20 +299,6 @@ export function AttemptLayout() {
         </>
       )}
     </RequireSession>
-  );
-}
-export function SoundButton() {
-  const { preferences, setPreference } = usePreferences(),
-    { t } = useLanguage();
-  return (
-    <Button
-      variant="ghost"
-      aria-label={t("preferences.sound")}
-      aria-pressed={preferences.sound}
-      onClick={() => setPreference("sound", !preferences.sound)}
-    >
-      {preferences.sound ? <Volume2 size={20} /> : <VolumeX size={20} />}
-    </Button>
   );
 }
 export function NotFound() {

@@ -1,18 +1,22 @@
-import "./home.css";
-import { useState } from "react";
 import {
+  ArrowUpRight,
   BookOpen,
-  Users,
   ClipboardList,
   Plus,
-  ArrowUpRight,
+  Users,
 } from "lucide-react";
+import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { useLanguage, usePreferences, useSession } from "../../app/state";
-import { api, canTeach } from "../../shared/api";
-import { Page, Button, Empty, ErrorNotice, Status } from "../../shared/ui";
+import { canTeach } from "../../shared/identity";
+import { useLanguage, usePreferences, useSession } from "../../shared/runtime";
+import { assignmentsApi } from "../assignments/api";
+import { classroomsApi } from "../classrooms/api";
+import { worksheetsApi } from "../worksheets/api";
+import "./home.css";
+
 import { Resource, useResource } from "../../shared/resource";
-import { ShareDialog } from "../worksheets/Sharing";
+import { Button, Empty, ErrorNotice, Page, Status } from "../../shared/ui";
+import { ShareDialog } from "../assignments/Sharing";
 export default function Dashboard() {
   const { user } = useSession();
   return canTeach(user) ? (
@@ -27,9 +31,9 @@ function TeacherDashboard() {
   const [share, setShare] = useState<number | null>(null);
   const query = useResource(["dashboard"], async () => {
     const [worksheets, classes, assignments] = await Promise.all([
-      api.worksheets(),
-      api.classes(),
-      api.assignments(),
+      worksheetsApi.worksheets(),
+      classroomsApi.classes(),
+      assignmentsApi.assignments(),
     ]);
     return { worksheets, classes, assignments };
   });

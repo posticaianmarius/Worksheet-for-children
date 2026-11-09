@@ -1,4 +1,5 @@
-import { request } from "../../shared/api";
+import { request } from "../../shared/http";
+import { mutationSender } from "../../shared/mutations";
 import type {
   AccessCard,
   Invitation,
@@ -6,12 +7,26 @@ import type {
   SpaceStudent,
   TeamMember,
 } from "../../shared/types";
-const send = <T>(url: string, method = "POST", body: unknown = {}) =>
-  request<T>(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+const send = mutationSender(
+  [
+    "directory",
+    "space-team",
+    "space-invitations",
+    "class-teachers",
+    "class-members",
+    "assignment-members",
+    "classes",
+    "class",
+    "student",
+    "class-report",
+    "results",
+    "assignment-report",
+    "deliveries",
+    "student-work",
+    "dashboard",
+  ],
+  true,
+);
 const path = (space: number) => "/api/spaces/" + space;
 export const spacesApi = {
   context: () => request<SpaceContext>("/api/auth/context"),

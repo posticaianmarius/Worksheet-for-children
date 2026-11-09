@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
 import { Check } from "lucide-react";
-import { useLanguage, usePreferences } from "../../app/state";
-import { photoUrl } from "../../shared/api";
+import { useRef, useState } from "react";
+import { photoUrl } from "../../shared/assets";
+import { useLanguage, usePreferences } from "../../shared/runtime";
 import { Button } from "../../shared/ui";
 import { maximumScore } from "../engine";
+import { playAnswerFeedback } from "../feedback";
 import type { PlayerProps } from "../registry";
-import { playAnswerFeedback } from "../../lib/game-feedback.js";
 export default function LetterPlayer({
   configuration,
   onComplete,

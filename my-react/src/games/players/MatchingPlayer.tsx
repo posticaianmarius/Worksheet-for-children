@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { useLanguage } from "../../app/state";
-import { photoUrl } from "../../shared/api";
+import { photoUrl } from "../../shared/assets";
+import { useLanguage } from "../../shared/runtime";
 import { Button } from "../../shared/ui";
 import { shuffle } from "../engine";
 import type { PlayerProps } from "../registry";

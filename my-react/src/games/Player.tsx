@@ -1,12 +1,12 @@
-import "./player.css";
-import { Suspense, useRef, useState, useEffect } from "react";
 import { HelpCircle } from "lucide-react";
-import { useLanguage, usePreferences } from "../app/state";
-import { Button, Loading, Modal } from "../shared/ui";
-import { photoUrl } from "../shared/api";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { photoUrl } from "../shared/assets";
+import { useLanguage, usePreferences } from "../shared/runtime";
 import type { Configuration, GameResult } from "../shared/types";
-import { gameModules, supports, loadedPlayers } from "./registry";
-import { playTaskComplete, stopGameFeedback } from "../lib/game-feedback.js";
+import { Button, Loading, Modal } from "../shared/ui";
+import { playTaskComplete, stopGameFeedback } from "./feedback";
+import "./player.css";
+import { gameModules, loadedPlayers, supports } from "./registry";
 export default function GamePlayer({
   type,
   version = 1,

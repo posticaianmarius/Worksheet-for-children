@@ -1,17 +1,15 @@
-import { createContext, useContext, useLayoutEffect, useState } from "react";
-import type { ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLanguage, useSession } from "../../app/state";
-import { setActiveSpace } from "../../shared/api";
-import type { SpaceContext as Context } from "../../shared/types";
+import type { ReactNode } from "react";
+import { useLayoutEffect, useState } from "react";
+import { setActiveSpace } from "../../shared/http";
+import {
+  SpaceContext,
+  useLanguage,
+  useSession,
+  useSpace,
+} from "../../shared/runtime";
 import { ErrorNotice, Loading } from "../../shared/ui";
 import { spacesApi } from "./api";
-const SpaceContext = createContext<{
-  context: Context | null;
-  switchSpace: (id: number) => Promise<void>;
-  refresh: () => Promise<unknown>;
-}>({ context: null, switchSpace: async () => {}, refresh: async () => {} });
-export const useSpace = () => useContext(SpaceContext);
 export function SpaceProvider({ children }: { children: ReactNode }) {
   const { user } = useSession(),
     client = useQueryClient(),

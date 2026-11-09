@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateValue, scorePercent, sortRows } from "../src/platform/sorting.js";
+import {
+  dateValue,
+  scorePercent,
+  sortRows,
+} from "../src/shared/sorting-model.ts";
 
 test("results compare numerically, normalize different maximums and keep zero before missing", () => {
   const rows = [

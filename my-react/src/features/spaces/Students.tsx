@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useLanguage } from "../../app/state";
-import { Button, Confirm, Empty, ErrorNotice, Page } from "../../shared/ui";
 import { Resource, useResource } from "../../shared/resource";
+import { useLanguage, useSpace } from "../../shared/runtime";
 import type { SpaceStudent } from "../../shared/types";
-import { useSpace } from "./SpaceContext";
+import { Button, Confirm, Empty, ErrorNotice, Page } from "../../shared/ui";
+
 import { spacesApi } from "./api";
-import { StudentPicker } from "./StudentPicker";
 import { StudentAccess } from "./StudentAccess";
+import { StudentPicker } from "./StudentPicker";
 export default function Students() {
   const { context } = useSpace(),
     { t } = useLanguage(),

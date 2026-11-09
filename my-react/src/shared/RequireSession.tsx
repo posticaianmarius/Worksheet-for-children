@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { canTeach } from "../shared/api";
-import { Loading, ErrorNotice } from "../shared/ui";
-import { useSession } from "./state";
+import { canTeach } from "./identity";
+import { useSession } from "./runtime";
+import { ErrorNotice, Loading } from "./ui";
 export function RequireSession({
   children,
   teacher = false,

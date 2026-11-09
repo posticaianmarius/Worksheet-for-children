@@ -1,10 +1,11 @@
-import "./assignments.css";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useLanguage } from "../../app/state";
-import { api } from "../../shared/api";
-import { Empty, Page, Status } from "../../shared/ui";
+import { useLanguage } from "../../shared/runtime";
+import { assignmentsApi } from "./api";
+import "./assignments.css";
+
 import { Resource, useResource } from "../../shared/resource";
+import { Empty, Page, Status } from "../../shared/ui";
 export default function Results({
   classroomId,
   embedded = false,
@@ -17,7 +18,7 @@ export default function Results({
   const [student, setStudent] = useState(""),
     [status, setStatus] = useState("");
   const query = useResource(["results", classroomId], () =>
-    api.report(true, classroomId),
+    assignmentsApi.report(true, classroomId),
   );
   const content = (
     <Resource query={query}>

@@ -1,14 +1,15 @@
-import "./worksheets.css";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSpace } from "../spaces/SpaceContext";
+import { Copy, Presentation, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage, useSession, useSpace } from "../../shared/runtime";
 import type { Worksheet } from "../../shared/types";
-import { Copy, Presentation, RefreshCw } from "lucide-react";
-import { useLanguage, useSession } from "../../app/state";
-import { api } from "../../shared/api";
-import { Button, ErrorNotice, Modal } from "../../shared/ui";
+import { classroomsApi } from "../classrooms/api";
+import { assignmentsApi } from "./api";
+import "./sharing.css";
+
 import { Resource, useResource } from "../../shared/resource";
+import { Button, ErrorNotice, Modal } from "../../shared/ui";
 export function ShareDialog({
   worksheetId,
   onClose,
@@ -36,7 +37,7 @@ function ShareContent({
     client = useQueryClient();
   const { context } = useSpace();
   const query = useResource(["share", worksheetId], () =>
-    api.share(worksheetId),
+    assignmentsApi.share(worksheetId),
   );
   const [replacing, setReplacing] = useState(false),
     [present, setPresent] = useState(false),
@@ -46,7 +47,7 @@ function ShareContent({
   async function rotate() {
     setBusy(true);
     try {
-      const result = await api.share(worksheetId, true);
+      const result = await assignmentsApi.share(worksheetId, true);
       client.setQueryData(
         [user?.id, context?.spaceId, "share", worksheetId],
         result,
@@ -169,7 +170,7 @@ function AssignContent({
 }) {
   const { t } = useLanguage(),
     navigate = useNavigate(),
-    classes = useResource(["classes"], api.classes);
+    classes = useResource(["classes"], classroomsApi.classes);
   const [classId, setClassId] = useState(classroomId ?? ""),
     [mode, setMode] = useState("all"),
     [selected, setSelected] = useState<number[]>([]),
@@ -181,7 +182,7 @@ function AssignContent({
       worksheet: Worksheet;
     } | null>(null);
   const members = useResource(["assignment-members", classId], () =>
-    classId ? api.members(classId) : Promise.resolve([]),
+    classId ? classroomsApi.members(classId) : Promise.resolve([]),
   );
   const active = (members.data ?? []).filter((m) => !m.leftAt),
     recipients =
@@ -192,7 +193,7 @@ function AssignContent({
     setBusy(true);
     setError(null);
     try {
-      setPreview(await api.assignmentPreview(worksheetId));
+      setPreview(await assignmentsApi.assignmentPreview(worksheetId));
     } catch (e) {
       setError(e);
     } finally {
@@ -204,7 +205,7 @@ function AssignContent({
     setBusy(true);
     setError(null);
     try {
-      await api.assign(worksheetId, {
+      await assignmentsApi.assign(worksheetId, {
         classroomId: Number(classId),
         ...(mode === "selected" ? { userIds: selected } : {}),
         title: title.trim() || undefined,
