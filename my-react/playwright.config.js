@@ -1,21 +1,20 @@
 import { defineConfig } from "@playwright/test";
 import process from "node:process";
-
+import { shared, liveSpecs } from "./playwright.shared.js";
 export default defineConfig({
-  testDir: "./e2e",
-  testIgnore: process.env.E2E_LIVE_BACKEND ? [] : ["**/live-backend.spec.js","**/*-live.spec.js"],
-  snapshotPathTemplate: "{testDir}/snapshots/{testFilePath}/{arg}{ext}",
-  timeout: 45_000,
-  use: {
-    baseURL: process.env.E2E_BASE_URL || "http://localhost:5173",
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-  },
-  reporter: [["list"], ["html", { open: "never" }]],
+  ...shared,
+  projects: [
+    { name: "mocked", testIgnore: liveSpecs, grepInvert: /visual regression/ },
+    {
+      name: "visual",
+      testMatch: "**/redesign.spec.js",
+      grep: /visual regression/,
+    },
+  ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "npm run dev -- --host localhost",
+        command: "npm run dev -- --host localhost --port 5173 --strictPort",
         url: "http://localhost:5173",
         reuseExistingServer: !process.env.CI,
       },

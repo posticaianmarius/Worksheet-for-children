@@ -1,3 +1,4 @@
+import { expectRoutesFit } from "./fixtures/layout.js";
 import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 const schema = {
@@ -321,36 +322,27 @@ test("sound and motion preferences are functional and persist on this device", a
   await page.locator(".answer").filter({ hasText: /^2$/ }).click();
   expect(await page.evaluate(() => window.feedbackPlayed)).toEqual([]);
 });
-test("all primary layouts fit narrow phones, tablets and desktop screens", async ({
-  page,
-}) => {
-  await setup(page);
-  for (const width of [320, 390, 768, 1024, 1440]) {
-    await page.setViewportSize({ width, height: 900 });
-    for (const route of [
-      "/",
-      "/login",
-      "/signup",
-      "/home",
-      "/sheets",
-      "/teacher/20",
-      "/classes",
-      "/assignments",
-      "/account",
-    ]) {
-      await page.goto(route);
-      await expect(page.locator("main")).toBeVisible();
-      expect(
-        await page.evaluate(
-          () =>
-            document.documentElement.scrollWidth <=
-            document.documentElement.clientWidth + 1,
-        ),
-        route + " at " + width,
-      ).toBe(true);
-    }
-  }
-});
+for (const width of [320, 390, 768, 1024, 1440]) {
+  test(`primary layouts fit at ${width}px`, async ({ page }) => {
+    await setup(page);
+    await expectRoutesFit(
+      page,
+      [
+        "/",
+        "/login",
+        "/signup",
+        "/home",
+        "/sheets",
+        "/teacher/20",
+        "/classes",
+        "/assignments",
+        "/account",
+      ],
+      width,
+      900,
+    );
+  });
+}
 test.describe("visual regression", () => {
   test.use({ reducedMotion: "reduce" });
   for (const entry of [

@@ -1,3 +1,4 @@
+import { expectRoutesFit } from "./fixtures/layout.js";
 import { spaceContextFor } from "./space-fixtures.js";
 import { test, expect } from "@playwright/test";
 const teacher = { id: 1, name: "Ana", role: "TEACHER" };
@@ -265,44 +266,23 @@ test("class assignments support explicitly selected recipients", async ({
     page.getByRole("link", { name: "View Maria's result" }),
   ).toBeVisible();
 });
-test("new teacher and student screens fit narrow phones", async ({ page }) => {
-  await setup(page);
-  for (const width of [320, 390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 844 });
-    for (const path of [
-      "/assignments",
-      "/results",
-      "/classes/10?tab=students",
-      "/classes/10?tab=assignments",
-      "/classes/10/access-cards",
-    ]) {
-      await page.goto(path);
-      await expect(page.locator("main")).toBeVisible();
-      expect(
-        await page.evaluate(
-          () =>
-            document.documentElement.scrollWidth <=
-            document.documentElement.clientWidth + 1,
-        ),
-        path + " at " + width,
-      ).toBe(true);
-    }
+for (const width of [320, 390, 768, 1440]) {
+  for (const role of ["TEACHER", "USER"]) {
+    test(`new ${role} screens fit at ${width}px`, async ({ page }) => {
+      await setup(page, role);
+      await expectRoutesFit(
+        page,
+        role === "TEACHER"
+          ? [
+              "/assignments",
+              "/results",
+              "/classes/10?tab=students",
+              "/classes/10?tab=assignments",
+              "/classes/10/access-cards",
+            ]
+          : ["/student", "/student/finished", "/student/settings"],
+        width,
+      );
+    });
   }
-  await page.unrouteAll();
-  await setup(page, "USER");
-  for (const width of [320, 390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 844 });
-    for (const path of ["/student", "/student/finished", "/student/settings"]) {
-      await page.goto(path);
-      await expect(page.locator("main")).toBeVisible();
-      expect(
-        await page.evaluate(
-          () =>
-            document.documentElement.scrollWidth <=
-            document.documentElement.clientWidth + 1,
-        ),
-        path + " at " + width,
-      ).toBe(true);
-    }
-  }
-});
+}
