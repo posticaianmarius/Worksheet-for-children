@@ -16,7 +16,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
     "spring.jpa.hibernate.ddl-auto=validate",
     "spring.flyway.enabled=true",
@@ -40,7 +40,7 @@ class PostgreSqlSchemaValidationIT {
     void freshDatabaseMigratesAndServesHttpRequests() throws Exception {
         // Context startup performs Flyway V1-to-latest and Hibernate schema validation.
         try (HttpClient client = HttpClient.newHttpClient()) {
-            for (String path : new String[] {"/", "/api/auth/csrf", "/api/minigames"}) {
+            for (String path : new String[] {"/api/auth/csrf", "/api/minigames"}) {
                 var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                     .timeout(Duration.ofSeconds(10))
                     .GET()

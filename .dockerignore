@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/target
+**/dist
+**/test-results
+**/playwright-report
+backend/data
+database/postgres-data
+Project
+Resources
+**/.env*
+**/*.log

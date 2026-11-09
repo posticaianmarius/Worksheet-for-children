@@ -17,6 +17,7 @@
 
     <properties>
         <java.version>25</java.version>
+        <frontend.outputDirectory>${project.basedir.parentFile}/my-react/dist</frontend.outputDirectory>
     </properties>
 
     <dependencies>
@@ -119,4 +120,49 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>with-frontend</id>
+            <build>
+                <resources>
+                    <resource><directory>src/main/resources</directory></resource>
+                    <resource>
+                        <directory>${frontend.outputDirectory}</directory>
+                        <targetPath>static</targetPath>
+                        <filtering>false</filtering>
+                    </resource>
+                </resources>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>3.6.2</version>
+                        <executions><execution>
+                            <id>require-frontend-build</id>
+                            <goals><goal>enforce</goal></goals>
+                            <configuration><rules><requireFilesExist>
+                                <message>Build the frontend first: npm --prefix my-react run build (from the repository root).</message>
+                                <files>
+                                    <file>${frontend.outputDirectory}/index.html</file>
+                                    <file>${frontend.outputDirectory}/.vite/manifest.json</file>
+                                </files>
+                            </requireFilesExist></rules></configuration>
+                        </execution></executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <executions><execution>
+                            <id>remove-stale-web-assets</id>
+                            <phase>generate-resources</phase><goals><goal>clean</goal></goals>
+                            <configuration>
+                                <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                                <filesets><fileset><directory>${project.build.outputDirectory}/static</directory></fileset></filesets>
+                            </configuration>
+                        </execution></executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

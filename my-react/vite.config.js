@@ -28,7 +28,7 @@ export default defineConfig({
 
   build: {
     manifest: true,
-    outDir: "../backend/src/main/resources/static",
+    outDir: "dist",
     emptyOutDir: true,
   },
 });

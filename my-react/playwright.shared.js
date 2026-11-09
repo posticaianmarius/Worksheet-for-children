@@ -1,8 +1,10 @@
+import { fileURLToPath } from "node:url";
 import process from "node:process";
 
 export const liveSpecs = ["**/live-backend.spec.js", "**/*-live.spec.js"];
 export const shared = {
   testDir: "./e2e",
+  outputDir: fileURLToPath(new URL("./test-results", import.meta.url)),
   snapshotPathTemplate: "{testDir}/snapshots/{testFilePath}/{arg}{ext}",
   timeout: 45_000,
   workers: process.env.CI ? 2 : undefined,
@@ -18,5 +20,16 @@ export const shared = {
         }
       : {}),
   },
-  reporter: [["list"], ["html", { open: "never" }]],
+  reporter: [
+    ["list"],
+    [
+      "html",
+      {
+        open: "never",
+        outputFolder: fileURLToPath(
+          new URL("./playwright-report", import.meta.url),
+        ),
+      },
+    ],
+  ],
 };

@@ -10,7 +10,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class PopulatedV19UpgradeIT {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine");

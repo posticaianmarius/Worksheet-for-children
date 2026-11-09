@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 const directory = resolve(
-  process.argv[2] ?? "../backend/src/main/resources/static",
+  process.argv[2] ?? "dist",
 );
 const manifest = JSON.parse(
   readFileSync(resolve(directory, ".vite/manifest.json"), "utf8"),

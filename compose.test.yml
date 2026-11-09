@@ -1,0 +1,44 @@
+# Production artifact, disposable data, no host directory or fixed container names.
+services:
+  app:
+    image: ${PLAY_SHEETS_TEST_IMAGE:-playsheets-test:local}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "127.0.0.1::8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/worksheets
+      DB_USERNAME: postgres
+      DB_PASSWORD: test-only
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://localhost:8080/api/auth/csrf",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: worksheets
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test-only
+    volumes:
+      - database:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d worksheets"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  database:

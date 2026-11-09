@@ -12,7 +12,7 @@ import tools.jackson.databind.node.ObjectNode;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class PopulatedV21UpgradeIT {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine");

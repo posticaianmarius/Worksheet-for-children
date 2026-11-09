@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class PopulatedV13UpgradeIT {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");

@@ -5,3 +5,10 @@ my-react/test-results/
 .env
 .env.local
 AGENTS
+
+# Generated builds and local runtime state
+my-react/dist/
+backend/target/
+backend/src/main/resources/static/
+database/postgres-data/
+*.log

@@ -8,7 +8,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class PopulatedV24SpaceUpgradeIT {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine");

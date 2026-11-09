@@ -9,7 +9,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 class PopulatedV22PhotoUpgradeIT {
     @Container
     static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18-alpine");
