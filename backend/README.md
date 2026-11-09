@@ -6,24 +6,21 @@ This backend is one Spring Boot modular monolith backed by PostgreSQL. Editable 
 
 ```text
 com.worksheet
-├── auth                 users, roles, sessions, admin bootstrap/API
-├── space                teaching teams, directory, invitations, credentials and scoped authorization
-├── classroom            classrooms and membership lifecycle
-├── minigame             dynamic catalog, versions, schemas and asset links
-├── worksheet            editable worksheet drafts and items
-│   ├── revision         immutable published worksheet snapshots
-│   └── result           deprecated result compatibility API
-├── assignment           per-user grants to frozen revisions
-├── attempt              canonical attempt and scoring lifecycle
-├── minigame1            legacy game adapter
-├── countmatch           legacy game adapter
-└── shared
-    ├── errors           stable JSON errors and request IDs
-    ├── security         Spring Security, CORS and CSRF
-    └── storage          replaceable asset storage contract
+├── auth                 accounts, sessions, roles and identity facade
+├── teaching             spaces, teams, directory, credentials and classrooms
+├── content              worksheet drafts/revisions, catalog, schemas and assets
+├── learning             deliveries, assignments, attempts, reports and legacy adapters
+├── application          cross-module HTTP adapters and transactional workflows
+├── shared               errors, security, storage and code generation
+└── minigame              unchanged historical configuration helper used by V23
 ```
 
-Each feature keeps the `controller -> service -> repository -> entity` flow. Controllers translate HTTP, services own authorization and transactions, repositories only query persistence, and response records keep JPA entities out of the API.
+Controllers translate HTTP. Module services own policy and persistence; repositories
+are private to their owning module. Application workflows coordinate changes across
+modules in one transaction. Cross-module queries use owner facades, retaining existing
+JPA associations as a documented persistence exception. DTOs keep entities out of
+public HTTP responses. ArchUnit enforces the module dependency graph, repository
+ownership, catalog reference port and encapsulated entity state.
 
 ## Domain and database
 
@@ -361,6 +358,13 @@ $env:DB_URL = 'jdbc:postgresql://localhost:5433/worksheets'
 .\mvnw.cmd clean spring-boot:run
 ```
 
+For an API-only development server, use the commands above without a frontend
+profile and open Vite separately. To package the complete application, run
+`npm --prefix my-react ci` followed by `npm run build:app` from the repository root.
+This builds `my-react/dist` and packages it with `-Pwith-frontend`. The profile fails
+if the frontend is missing; plain backend verification does not require generated UI
+files. Source resources and applied migrations are never rewritten by the build.
+
 Verification:
 
 ```powershell
@@ -376,8 +380,8 @@ PostgreSQL scripts, so duplicate versions and invalid filenames fail even withou
 Hibernate schema validation, HTTP startup, a populated V13-to-latest upgrade, and a populated
 V19-to-latest upgrade that preserves worksheet shares. Further upgrade fixtures cover
 V21 exercise-count compatibility, V22 photo versions, V23 archive fields and V24
-teaching-space migration with existing identities, code aliases and results. PostgreSQL integration tests are
-skipped with an explicit JUnit skip when Docker is unavailable; start Docker to run all checks.
+teaching-space migration with existing identities, code aliases and results. PostgreSQL integration tests are mandatory: `verify` fails when Docker is unavailable.
+Use `test` for checks that do not require Docker.
 
 
 ## Teaching-space API reference

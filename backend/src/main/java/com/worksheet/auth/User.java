@@ -1,6 +1,7 @@
 package com.worksheet.auth;
 
 import jakarta.persistence.*;
+
 import java.time.Instant;
 
 @Entity
@@ -36,12 +37,35 @@ public class User {
         this.createdAt = Instant.now();
     }
 
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public String getEmail() { return email; }
-    public String getPasswordHash() { return passwordHash; }
-    public UserRole getRole() { return role; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void changeRole(UserRole role) { this.role = role; }
-    public void rename(String name) { this.name = name; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void changeRole(UserRole role) {
+        this.role = role;
+    }
+
+    public void rename(String name) {
+        this.name = name;
+    }
 }

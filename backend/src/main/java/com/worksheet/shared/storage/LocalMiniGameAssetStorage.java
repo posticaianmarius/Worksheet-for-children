@@ -1,12 +1,13 @@
 package com.worksheet.shared.storage;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @Component
 public class LocalMiniGameAssetStorage implements MiniGameAssetStorage {
@@ -22,7 +23,8 @@ public class LocalMiniGameAssetStorage implements MiniGameAssetStorage {
             Files.createDirectories(directory);
             Files.write(resolve(storageKey), content);
         } catch (IOException error) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store mini-game asset.", error);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Could not store mini-game asset.", error);
         }
     }
 
@@ -40,14 +42,18 @@ public class LocalMiniGameAssetStorage implements MiniGameAssetStorage {
         try {
             Files.deleteIfExists(resolve(storageKey));
         } catch (IOException error) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not delete mini-game asset file.", error);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Could not delete mini-game asset file.",
+                    error);
         }
     }
 
     private Path resolve(String storageKey) {
         Path path = directory.resolve(storageKey).normalize();
         if (!path.startsWith(directory)) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid asset storage path.");
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Invalid asset storage path.");
         }
         return path;
     }

@@ -1,7 +1,8 @@
 package com.worksheet.shared.codes;
 
-import java.security.SecureRandom;
 import org.springframework.stereotype.Component;
+
+import java.security.SecureRandom;
 
 @Component
 public class JoinCodeGenerator {

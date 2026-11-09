@@ -1,11 +1,13 @@
 package com.worksheet.auth;
 
-import java.util.Locale;
+import static org.springframework.http.HttpStatus.*;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import static org.springframework.http.HttpStatus.*;
+
+import java.util.Locale;
 
 @Service
 public class AuthService {
@@ -21,7 +23,8 @@ public class AuthService {
 
     public UserResponse signup(String name, String email, String password, UserRole role) {
         if (name == null || name.isBlank() || name.strip().length() > 100) {
-            throw new ResponseStatusException(BAD_REQUEST, "Name must contain 1 to 100 characters.");
+            throw new ResponseStatusException(
+                    BAD_REQUEST, "Name must contain 1 to 100 characters.");
         }
         String normalizedEmail = normalizeEmail(email);
         validatePassword(password);
@@ -29,9 +32,17 @@ public class AuthService {
         try {
             UserRole requestedRole = role == null ? UserRole.TEACHER : role;
             if (requestedRole == UserRole.ADMIN) {
-                throw new ResponseStatusException(FORBIDDEN, "Administrator accounts cannot be created through public signup.");
+                throw new ResponseStatusException(
+                        FORBIDDEN,
+                        "Administrator accounts cannot be created through public signup.");
             }
-            User user = users.saveAndFlush(new User(name.strip(), normalizedEmail, passwords.encode(password), requestedRole));
+            User user =
+                    users.saveAndFlush(
+                            new User(
+                                    name.strip(),
+                                    normalizedEmail,
+                                    passwords.encode(password),
+                                    requestedRole));
             return UserResponse.from(user);
         } catch (DataIntegrityViolationException error) {
             // The database's unique constraint also covers simultaneous signup requests.
@@ -44,8 +55,13 @@ public class AuthService {
         String normalizedEmail = normalizeEmail(email);
         validatePassword(password);
         var user = users.findByEmail(normalizedEmail);
-        String hash = user.map(User::getPasswordHash).filter(value -> !value.equals("!")).orElse(dummyHash);
-        boolean valid = passwords.matches(password, hash) && user.map(value -> !value.getPasswordHash().equals("!")).orElse(false);
+        String hash =
+                user.map(User::getPasswordHash)
+                        .filter(value -> !value.equals("!"))
+                        .orElse(dummyHash);
+        boolean valid =
+                passwords.matches(password, hash)
+                        && user.map(value -> !value.getPasswordHash().equals("!")).orElse(false);
         if (user.isEmpty() || !valid) {
             throw new ResponseStatusException(UNAUTHORIZED, "Email or password is incorrect.");
         }
@@ -53,12 +69,14 @@ public class AuthService {
     }
 
     public UserResponse currentUser(Long id) {
-        return users.findById(id).map(UserResponse::from)
-            .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "Please log in."));
+        return users.findById(id)
+                .map(UserResponse::from)
+                .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "Please log in."));
     }
 
     private String normalizeEmail(String email) {
-        if (email == null) throw new ResponseStatusException(BAD_REQUEST, "Enter a valid email address.");
+        if (email == null)
+            throw new ResponseStatusException(BAD_REQUEST, "Enter a valid email address.");
         String normalized = email.strip().toLowerCase(Locale.ROOT);
         if (normalized.length() > 254 || !normalized.matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) {
             throw new ResponseStatusException(BAD_REQUEST, "Enter a valid email address.");
@@ -68,7 +86,8 @@ public class AuthService {
 
     private void validatePassword(String password) {
         if (password == null || password.length() < 15 || password.length() > 128) {
-            throw new ResponseStatusException(BAD_REQUEST, "Use a password between 15 and 128 characters.");
+            throw new ResponseStatusException(
+                    BAD_REQUEST, "Use a password between 15 and 128 characters.");
         }
     }
 
