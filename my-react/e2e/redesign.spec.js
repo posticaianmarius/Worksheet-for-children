@@ -19,6 +19,9 @@ async function setup(page, { role = "TEACHER", unknown = false } = {}) {
   await page.addInitScript(() => {
     localStorage.setItem("worksheet-language", "en");
     let seed = 17;
+    window.resetWorksheetRandom = () => {
+      seed = 17;
+    };
     Math.random = () => {
       seed = (seed * 1664525 + 1013904223) >>> 0;
       return seed / 4294967296;
@@ -351,6 +354,25 @@ test.describe("visual regression", () => {
     { name: "entry-phone", route: "/", width: 390, role: null },
     { name: "teacher-dashboard", route: "/home", width: 1440, role: "TEACHER" },
     {
+      name: "worksheet-library",
+      route: "/sheets",
+      width: 1440,
+      role: "TEACHER",
+    },
+    {
+      name: "worksheet-library-phone",
+      route: "/sheets",
+      width: 390,
+      role: "TEACHER",
+    },
+    {
+      name: "create-worksheet-phone",
+      route: "/sheets",
+      width: 390,
+      role: "TEACHER",
+      create: true,
+    },
+    {
       name: "worksheet-editor",
       route: "/teacher/20",
       width: 1440,
@@ -361,7 +383,26 @@ test.describe("visual regression", () => {
     test(entry.name, async ({ page }) => {
       await setup(page, { role: entry.role });
       await page.setViewportSize({ width: entry.width, height: 1000 });
-      await page.goto(entry.route);
+      // The lab must also stay unchanged after the collection's CSS has loaded.
+      if (entry.route === "/teacher/20") {
+        await page.goto("/sheets");
+        await expect(page.locator(".worksheet-card")).toHaveCount(2);
+        await page.route("**/api/worksheets/20", async (route) => {
+          await page.evaluate(() => window.resetWorksheetRandom());
+          await route.fallback();
+        });
+        await page.locator('.worksheetOpenButton[href="/teacher/20"]').click();
+      } else {
+        await page.goto(entry.route);
+      }
+      if (entry.route === "/sheets")
+        await expect(page.locator(".worksheet-card")).toHaveCount(2);
+      if (entry.create) {
+        await page
+          .getByRole("button", { name: "New worksheet", exact: true })
+          .click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+      }
       if (entry.route === "/teacher/20")
         await expect(page.getByLabel("Number of exercises:")).toHaveValue("10");
       if (entry.route === "/home")

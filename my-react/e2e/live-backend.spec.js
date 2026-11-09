@@ -60,6 +60,45 @@ test("real backend: all six editors persist non-default settings and a class com
       .click();
     await expect(page.locator(".save-status")).toHaveText("Saved");
   }
+  await create("A temporary worksheet");
+  await page.goto("/sheets");
+  await page
+    .getByRole("button", {
+      name: "More actions: A temporary worksheet",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Rename worksheet", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByLabel("Worksheet name", { exact: true })
+    .fill("A renamed worksheet");
+  await page.getByRole("button", { name: "Save name", exact: true }).click();
+  await expect(
+    page.getByRole("link", {
+      name: "Open worksheet: A renamed worksheet",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "More actions: A renamed worksheet",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("menuitem", {
+      name: "Delete worksheet: A renamed worksheet",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete worksheet", exact: true })
+    .click();
+  await expect(page.locator(".worksheet-card")).toHaveCount(0);
   await create("All six real editors");
   for (const title of [
     "Easy math",

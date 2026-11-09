@@ -1,11 +1,13 @@
 import { translate } from "./i18n/legacy";
 import { spaceCopy } from "./i18n/spaces";
+import { libraryCopy } from "./i18n/library";
 export type Language = "en" | "ro";
 export type Translate = (
   key: string,
   values?: Record<string, unknown>,
 ) => string;
 const copy: Record<string, [string, string]> = {
+  ...libraryCopy,
   "studio.activity": ["Activity", "Activitate"],
   "studio.previewReady": [
     "Preview complete. No results are saved.",

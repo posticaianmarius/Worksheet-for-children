@@ -1,0 +1,110 @@
+.create-worksheet-dialog {
+  width: min(560px, 100%);
+}
+.create-worksheet-dialog .dialog-heading {
+  margin-bottom: 10px;
+}
+.create-worksheet-dialog > .muted {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.worksheet-create-steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 24px 0;
+}
+.worksheet-create-steps li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.worksheet-create-steps li[aria-current] {
+  border-color: #d3c9f5;
+  background: #f7f4ff;
+  color: var(--color-primary);
+}
+.worksheet-create-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eeebf5;
+  font-size: 12px;
+}
+.worksheet-create-steps li[aria-current] > span {
+  background: var(--color-primary);
+  color: white;
+}
+.worksheet-create-steps strong {
+  font-weight: 550;
+}
+.create-worksheet-dialog .form-stack > label {
+  font-size: 14px;
+}
+.create-worksheet-dialog input {
+  min-height: 48px;
+  font-size: 15px;
+}
+.worksheet-name-hint {
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.worksheet-create-next {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #f8f9fc;
+  margin: 14px 0 12px;
+}
+.worksheet-create-next > svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+.worksheet-create-next strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.worksheet-create-next p {
+  color: var(--color-muted);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.create-worksheet-dialog .actions {
+  gap: 10px;
+  margin-top: 10px;
+}
+.create-worksheet-dialog .actions > .button {
+  min-height: 46px;
+}
+@media (max-width: 479px) {
+  .create-worksheet-dialog {
+    padding: 22px;
+  }
+  .worksheet-create-steps {
+    gap: 8px;
+  }
+  .worksheet-create-steps li {
+    padding: 10px 8px;
+    font-size: 11px;
+    gap: 6px;
+  }
+  .create-worksheet-dialog .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,14 +1,17 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../../shared/runtime";
 import { Button, ErrorNotice, Modal } from "../../shared/ui";
 import { worksheetsApi } from "./api";
+import "./creation.css";
 
 /** Shared creation flow for the library and teacher dashboard. */
 export function CreateWorksheet({ onClose }: { onClose: () => void }) {
   const { t } = useLanguage(),
     navigate = useNavigate(),
-    inputId = useId();
+    inputId = useId(),
+    lock = useRef(false);
   const [name, setName] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null);
@@ -19,7 +22,8 @@ export function CreateWorksheet({ onClose }: { onClose: () => void }) {
         : null,
   }));
   async function create() {
-    if (busy || !name.trim()) return;
+    if (lock.current || !name.trim()) return;
+    lock.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -28,16 +32,32 @@ export function CreateWorksheet({ onClose }: { onClose: () => void }) {
     } catch (error) {
       setError(error);
     } finally {
+      lock.current = false;
       setBusy(false);
     }
   }
   return (
     <Modal
       open
-      onClose={() => !busy && onClose()}
+      onClose={() => !lock.current && onClose()}
       title={t("Create worksheet")}
       finalFocus={finalFocus}
+      className="create-worksheet-dialog"
+      description={t("library.createHelp")}
     >
+      <ol
+        className="worksheet-create-steps"
+        aria-label={t("library.createSteps")}
+      >
+        <li aria-current="step">
+          <span aria-hidden="true">1</span>
+          <strong>{t("library.nameStep")}</strong>
+        </li>
+        <li>
+          <span aria-hidden="true">2</span>
+          <strong>{t("library.labStep")}</strong>
+        </li>
+      </ol>
       <form
         className="form-stack"
         onSubmit={(event) => {
@@ -55,14 +75,31 @@ export function CreateWorksheet({ onClose }: { onClose: () => void }) {
           onChange={(event) => setName(event.target.value)}
           placeholder={t("For example: Animals and colours")}
           disabled={busy}
+          aria-describedby={inputId + "-hint"}
         />
+        <p className="worksheet-name-hint" id={inputId + "-hint"}>
+          {t("library.nameHint")}
+        </p>
+        <div className="worksheet-create-next">
+          <BookOpen size={20} aria-hidden="true" />
+          <div>
+            <strong>{t("library.nextLab")}</strong>
+            <p>{t("library.nextLabHelp")}</p>
+          </div>
+        </div>
         <ErrorNotice error={error} />
         <div className="actions end">
           <Button disabled={busy} onClick={onClose}>
             {t("Cancel")}
           </Button>
-          <Button variant="primary" type="submit" busy={busy}>
+          <Button
+            variant="primary"
+            type="submit"
+            busy={busy}
+            disabled={!name.trim()}
+          >
             {t("Create worksheet")}
+            <ArrowRight size={17} aria-hidden="true" />
           </Button>
         </div>
       </form>

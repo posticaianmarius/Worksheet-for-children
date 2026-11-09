@@ -290,8 +290,9 @@ test("worksheet card opens from its background while share and delete stay on th
   await expect(page.getByRole("dialog")).toBeVisible();
   await expect(page).toHaveURL(/\/sheets$/);
   await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("button", { name: "More actions: Practice" }).click();
   await page
-    .getByRole("button", { name: "Delete worksheet: Practice" })
+    .getByRole("menuitem", { name: "Delete worksheet: Practice" })
     .click();
   await expect(
     page.getByText("Delete this worksheet?", { exact: true }),
