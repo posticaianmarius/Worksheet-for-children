@@ -1,3 +1,4 @@
+import { CreateWorksheet } from "./CreateWorksheet";
 import {
   ArrowUpRight,
   BookOpen,
@@ -13,23 +14,13 @@ import { worksheetsApi } from "./api";
 import "./worksheets.css";
 
 import { Resource, useResource } from "../../shared/resource";
-import {
-  Button,
-  Confirm,
-  Empty,
-  ErrorNotice,
-  Modal,
-  Page,
-} from "../../shared/ui";
+import { Button, Confirm, Empty, Page } from "../../shared/ui";
 import { ShareDialog } from "../assignments/Sharing";
 export default function Library() {
   const { t, language } = useLanguage(),
     navigate = useNavigate(),
     [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(false),
-    [name, setName] = useState(""),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState<unknown>(null),
     [share, setShare] = useState<number | null>(null);
   const query = useResource(["worksheets"], worksheetsApi.worksheets),
     search = params.get("q") ?? "",
@@ -45,19 +36,6 @@ export default function Library() {
       { replace: true },
     );
   }
-  async function create() {
-    if (busy || !name.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const sheet = await worksheetsApi.createWorksheet(name.trim());
-      navigate("/teacher/" + sheet.id);
-    } catch (e) {
-      setError(e);
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <Page
       title={t("My worksheets")}
@@ -66,8 +44,6 @@ export default function Library() {
         <Button
           variant="primary"
           onClick={() => {
-            setName("");
-            setError(null);
             setOpen(true);
           }}
         >
@@ -96,7 +72,6 @@ export default function Library() {
           <option value="name">{t("library.name")}</option>
         </select>
       </div>
-      {!open && <ErrorNotice error={error} />}
       <Resource query={query}>
         {(sheets) => {
           const filtered = sheets
@@ -209,40 +184,7 @@ export default function Library() {
         }}
       </Resource>
       <ShareDialog worksheetId={share} onClose={() => setShare(null)} />
-      <Modal
-        open={open}
-        onClose={() => !busy && setOpen(false)}
-        title={t("Create worksheet")}
-      >
-        <form
-          className="form-stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void create();
-          }}
-        >
-          <label htmlFor="worksheet-name">{t("Worksheet name")}</label>
-          <input
-            id="worksheet-name"
-            autoFocus
-            required
-            maxLength={150}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("For example: Animals and colours")}
-            disabled={busy}
-          />
-          <ErrorNotice error={error} />
-          <div className="actions end">
-            <Button disabled={busy} onClick={() => setOpen(false)}>
-              {t("Cancel")}
-            </Button>
-            <Button variant="primary" type="submit" busy={busy}>
-              {t("Create worksheet")}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {open && <CreateWorksheet onClose={() => setOpen(false)} />}
     </Page>
   );
 }

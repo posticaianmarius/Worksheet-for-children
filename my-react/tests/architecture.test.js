@@ -24,6 +24,7 @@ const publicEntries = new Set([
   "spaces/StudentPicker",
   "spaces/invitation-state",
   "catalog/Photos",
+  "worksheets/CreateWorksheet",
 ]);
 test("source modules respect ownership and use declared feature entrypoints", () => {
   const failures = [];

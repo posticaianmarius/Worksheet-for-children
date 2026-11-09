@@ -295,6 +295,7 @@ test("worksheet discovery keeps search and ordering in the URL", async ({
   await page.reload();
   await expect(page.getByRole("searchbox")).toHaveValue("Animal");
   await page.getByRole("searchbox").fill("");
+  await expect(page.locator(".worksheet-card")).toHaveCount(2);
   await page
     .getByRole("combobox", { name: "Sort worksheets" })
     .selectOption("name");

@@ -9,7 +9,7 @@ import {
   LoaderCircle,
   X,
 } from "lucide-react";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, RefObject } from "react";
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "./runtime";
@@ -43,6 +43,7 @@ export function Modal({
   children,
   className = "",
   dismissible = true,
+  finalFocus,
 }: {
   open: boolean;
   onClose: () => void;
@@ -51,6 +52,7 @@ export function Modal({
   children: ReactNode;
   className?: string;
   dismissible?: boolean;
+  finalFocus?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useLanguage();
   return (
@@ -63,7 +65,10 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Backdrop className="dialog-backdrop" />
         <Dialog.Viewport className="dialog-viewport">
-          <Dialog.Popup className={"dialog " + className}>
+          <Dialog.Popup
+            className={"dialog " + className}
+            finalFocus={finalFocus}
+          >
             <div className="dialog-heading">
               <Dialog.Title>{title}</Dialog.Title>
               {dismissible && (

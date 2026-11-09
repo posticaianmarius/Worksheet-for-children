@@ -156,6 +156,31 @@ const copy: Record<string, [string, string]> = {
     "Create something that fits your class. Share it in moments.",
     "Creează activități potrivite clasei tale. Distribuie-le în câteva clipe.",
   ],
+  "dashboard.results": ["View results", "Vezi rezultatele"],
+  "dashboard.intro": [
+    "Pick up where you left off, or start something new.",
+    "Continuă de unde ai rămas sau începe ceva nou.",
+  ],
+  "dashboard.updated": ["Updated", "Actualizată"],
+  "dashboard.edit": ["Edit worksheet", "Editează fișa"],
+  "dashboard.editNamed": ["Edit {name}", "Editează {name}"],
+  "dashboard.share": ["Share", "Distribuie"],
+  "dashboard.setupProgress": ["{count}/3 ready", "{count}/3 gata"],
+  "dashboard.stepClass": ["Add a class", "Adaugă o clasă"],
+  "dashboard.stepWorksheet": ["Create a worksheet", "Creează o fișă"],
+  "dashboard.stepAssign": ["Assign work", "Atribuie o fișă"],
+  "dashboard.emptyTitle": [
+    "Your next worksheet starts here",
+    "Următoarea fișă începe aici",
+  ],
+  "dashboard.emptyCopy": [
+    "Create a worksheet, add activities, then assign it to your class.",
+    "Creează o fișă, adaugă activități, apoi atribuie-o clasei tale.",
+  ],
+  "dashboard.firstWorksheet": [
+    "Create your first worksheet",
+    "Creează prima fișă",
+  ],
   "dashboard.eyebrow": ["YOUR TEACHING SPACE", "SPAȚIUL TĂU DE ÎNVĂȚARE"],
   "dashboard.subtitle": [
     "A clear space to prepare, share, and see their progress.",

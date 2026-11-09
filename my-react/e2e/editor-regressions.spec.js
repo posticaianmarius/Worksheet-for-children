@@ -230,7 +230,7 @@ test("dashboard sharing opens the correct code without navigating to the editor"
     .click();
   await page.setViewportSize({ width: 390, height: 844 });
 
-  await page.getByRole("link", { name: "Practice" }).click();
+  await page.getByRole("link", { name: "Practice", exact: true }).click();
   await expect(page).toHaveURL(/\/teacher\/20$/);
 });
 
