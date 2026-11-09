@@ -100,6 +100,7 @@ test("children enter codes, resume unfinished work and finish without signup", a
     page.getByText("Exercițiul 1 / 1", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Impar", exact: true }).click();
+  await page.getByRole("button", { name: "Continuă", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Finalizează fișa" }),
   ).toBeVisible();

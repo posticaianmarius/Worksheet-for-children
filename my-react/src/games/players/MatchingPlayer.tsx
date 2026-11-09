@@ -4,6 +4,7 @@ import { useLanguage } from "../../shared/runtime";
 import { Button } from "../../shared/ui";
 import { shuffle } from "../engine";
 import type { PlayerProps } from "../registry";
+import { EmojiVisual } from "../../shared/visuals/Visual";
 export default function MatchingPlayer({
   configuration,
   onComplete,
@@ -130,7 +131,7 @@ export default function MatchingPlayer({
                       alt={pair.emoji}
                     />
                   ) : (
-                    <span key={i}>{pair.emoji}</span>
+                    <EmojiVisual key={i} emoji={pair.emoji} />
                   ),
                 )}
               </span>

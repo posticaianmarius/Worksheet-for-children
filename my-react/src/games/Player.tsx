@@ -6,19 +6,27 @@ import type { Configuration, GameResult } from "../shared/types";
 import { Button, Loading, Modal } from "../shared/ui";
 import { playTaskComplete, stopGameFeedback } from "./feedback";
 import "./player.css";
+import "./studio-player.css";
 import { gameModules, loadedPlayers, supports } from "./registry";
+import ActivityAdvance from "./ActivityAdvance";
 export default function GamePlayer({
   type,
   version = 1,
   configuration,
   onComplete,
   busy = false,
+  onAdvance,
+  onSkip,
+  preview = false,
 }: {
   type: string;
   version?: number;
   configuration: Configuration;
   onComplete?: (result: GameResult) => Promise<boolean | void>;
   busy?: boolean;
+  onAdvance?: () => void;
+  onSkip?: () => void;
+  preview?: boolean;
 }) {
   const { t } = useLanguage(),
     { preferences } = usePreferences(),
@@ -27,7 +35,8 @@ export default function GamePlayer({
     completed = useRef(false);
   const [result, setResult] = useState<GameResult | null>(null),
     [failed, setFailed] = useState(false),
-    [help, setHelp] = useState(false);
+    [help, setHelp] = useState(false),
+    [saved, setSaved] = useState(false);
   const [Player] = useState(
     () => loadedPlayers[type] ?? gameModules[type]?.Player,
   );
@@ -43,6 +52,7 @@ export default function GamePlayer({
     setFailed(false);
     try {
       if ((await onComplete(payload)) === false) setFailed(true);
+      else setSaved(true);
     } catch {
       setFailed(true);
     } finally {
@@ -64,10 +74,21 @@ export default function GamePlayer({
     };
     setResult(payload);
     if (preferences.sound) playTaskComplete();
-    if (automatic) void submit(payload);
+    if (automatic || onAdvance) void submit(payload);
   }
   if (!module || !Player || !supports(type, version))
-    return <div className="notice">{t("editor.unavailable")}</div>;
+    return (
+      <div className="notice">
+        {t("editor.unavailable")}
+        {onSkip && (
+          <div className="attempt-secondary">
+            <Button variant="ghost" disabled={busy} onClick={onSkip}>
+              {t("Skip activity")}
+            </Button>
+          </div>
+        )}
+      </div>
+    );
 
   return (
     <Suspense fallback={<Loading />}>
@@ -104,13 +125,15 @@ export default function GamePlayer({
         />
         {result && (
           <div className="childGameActions">
-            {onComplete && (!automatic || failed) ? (
+            {onAdvance && saved ? (
+              <ActivityAdvance onAdvance={onAdvance} preview={preview} />
+            ) : onComplete && ((!automatic && !onAdvance) || failed) ? (
               <Button
                 variant="primary"
                 busy={busy}
                 onClick={() => void submit(result)}
               >
-                {t(automatic ? "Save result" : "Continue")}
+                {t(automatic || onAdvance ? "Save result" : "Continue")}
               </Button>
             ) : (
               <p role="status">
@@ -119,6 +142,13 @@ export default function GamePlayer({
                   : t("Result:") + " " + result.score + " / " + result.maxScore}
               </p>
             )}
+          </div>
+        )}
+        {onSkip && !result && (
+          <div className="attempt-secondary">
+            <Button variant="ghost" disabled={busy} onClick={onSkip}>
+              {t("Skip activity")}
+            </Button>
           </div>
         )}
         <Modal

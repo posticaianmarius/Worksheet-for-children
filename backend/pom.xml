@@ -17,7 +17,7 @@
 
     <properties>
         <java.version>25</java.version>
-        <frontend.outputDirectory>${project.basedir.parentFile}/my-react/dist</frontend.outputDirectory>
+        <frontend.outputDirectory>${project.basedir}/../my-react/dist</frontend.outputDirectory>
     </properties>
 
     <dependencies>
@@ -147,13 +147,17 @@
                         <executions><execution>
                             <id>require-frontend-build</id>
                             <goals><goal>enforce</goal></goals>
-                            <configuration><rules><requireFilesExist>
+                            <!-- Check nonempty files without rejecting portable ../ paths. -->
+                            <configuration><rules><requireFilesSize>
                                 <message>Build the frontend first: npm --prefix my-react run build (from the repository root).</message>
+                                <minsize>1</minsize>
+                                <maxsize>9223372036854775807</maxsize>
+                                <allowNulls>false</allowNulls>
                                 <files>
                                     <file>${frontend.outputDirectory}/index.html</file>
                                     <file>${frontend.outputDirectory}/.vite/manifest.json</file>
                                 </files>
-                            </requireFilesExist></rules></configuration>
+                            </requireFilesSize></rules></configuration>
                         </execution></executions>
                     </plugin>
                     <plugin>

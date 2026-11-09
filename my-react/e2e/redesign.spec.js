@@ -371,6 +371,11 @@ test.describe("visual regression", () => {
       if (entry.route.startsWith("/attempts/"))
         await expect(page.locator(".answer")).toHaveCount(4);
       await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({
+        path: test.info().outputPath(entry.name + ".png"),
+        fullPage: true,
+        animations: "disabled",
+      });
       await expect(page).toHaveScreenshot(entry.name + ".png", {
         fullPage: true,
         animations: "disabled",

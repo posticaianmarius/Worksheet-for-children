@@ -13,6 +13,7 @@ import { catalogApi } from "../catalog/api";
 import { worksheetsApi } from "./api";
 import { useWorksheetEditor } from "./useWorksheetEditor";
 import "./worksheets.css";
+import "./studio.css";
 
 import GamePlayer from "../../games/Player";
 import { gameModules, supports } from "../../games/registry";
@@ -30,6 +31,7 @@ import { AssignDialog, ShareDialog } from "../assignments/Sharing";
 import ActivityOutline from "./ActivityOutline";
 import SettingsInspector from "./SettingsInspector";
 import { fingerprint } from "./draft";
+import { builtinVisuals } from "../../shared/visuals/catalog";
 export default function Editor() {
   const { worksheetId = "" } = useParams();
   const query = useResource(["editor", worksheetId], async () => {
@@ -284,10 +286,9 @@ function WorksheetEditor({
                 type={previewItem.definition?.type ?? ""}
                 version={previewItem.definition?.version}
                 configuration={previewItem.configuration}
-                onComplete={async () => {
-                  setPreviewIndex((value) => value + 1);
-                  return true;
-                }}
+                onComplete={async () => true}
+                preview
+                onAdvance={() => setPreviewIndex((value) => value + 1)}
               />
             </>
           ) : (
@@ -342,6 +343,7 @@ function WorksheetEditor({
             supports(definition.type, definition.version) ? (
               <fieldset disabled={disabled}>
                 <SettingsInspector
+                  key={active.key}
                   definition={definition}
                   configuration={active.configuration}
                   onChange={(value) => update(value)}
@@ -392,9 +394,23 @@ function WorksheetEditor({
                           miniGameId: def.id,
                           orderIndex: draft.items.length,
                           definition: def,
-                          configuration: structuredClone(
-                            def.defaultConfiguration ?? {},
-                          ),
+                          configuration: {
+                            ...structuredClone(def.defaultConfiguration ?? {}),
+                            ...(def.type === "color-game"
+                              ? {
+                                  animals:
+                                    def.defaultConfiguration?.animals?.map(
+                                      (animal) => ({
+                                        ...animal,
+                                        img:
+                                          builtinVisuals.find(
+                                            (visual) => visual.id === animal.id,
+                                          )?.src ?? animal.img,
+                                      }),
+                                    ),
+                                }
+                              : {}),
+                          },
                         },
                       });
                       setAdding(false);

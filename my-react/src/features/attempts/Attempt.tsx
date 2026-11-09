@@ -27,13 +27,24 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
   const [attempt, setAttempt] = useState(initial),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null),
-    saving = useRef(false);
+    saving = useRef(false),
+    [activeId, setActiveId] = useState<number | null>(
+      () => remainingItems(initial)[0]?.id ?? null,
+    ),
+    viewport = useRef<HTMLElement>(null);
   const pending = remainingItems(attempt),
-    item = pending[0];
-  const nextType = pending[1]?.definition?.type;
+    item = attempt.items.find((entry) => entry.id === activeId);
+  const nextType = pending.find((entry) => entry.id !== activeId)?.definition
+    ?.type;
   useEffect(() => {
     if (nextType) void preloadGame(nextType).catch(() => {});
   }, [nextType]);
+  useEffect(() => {
+    if (viewport.current) {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      viewport.current.focus({ preventScroll: true });
+    }
+  }, [activeId]);
   const readOnly =
       attempt.status !== "IN_PROGRESS" ||
       (!!attempt.assignmentId && user?.role !== "USER"),
@@ -133,7 +144,8 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
           <p role="status">
             {t("Activity {current} of {total}", {
               current: Math.min(
-                attempt.results.length + 1,
+                attempt.items.findIndex((entry) => entry.id === activeId) + 1 ||
+                  attempt.items.length,
                 attempt.items.length,
               ),
               total: attempt.items.length,
@@ -149,7 +161,15 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
       </div>
       <ErrorNotice error={error} />
       {item ? (
-        <>
+        <section
+          className="activity-viewport"
+          ref={viewport}
+          tabIndex={-1}
+          aria-label={t(
+            gameModules[item.definition?.type ?? ""]?.titleKey ??
+              "Unavailable activity",
+          )}
+        >
           <GamePlayer
             key={item.id}
             type={item.definition?.type ?? ""}
@@ -157,28 +177,26 @@ function AttemptContent({ initial }: { initial: AttemptData }) {
             configuration={item.configuration}
             onComplete={save}
             busy={busy}
+            onAdvance={() => setActiveId(pending[0]?.id ?? null)}
+            onSkip={() =>
+              void save({
+                outcome: "SKIPPED",
+                score: 0,
+                maxScore: maximumScore(
+                  item.definition?.type ?? "",
+                  item.configuration,
+                ),
+                timeSeconds: 0,
+                details: {},
+              }).then((ok) => {
+                if (ok)
+                  setActiveId(
+                    pending.find((entry) => entry.id !== item.id)?.id ?? null,
+                  );
+              })
+            }
           />
-          <div className="attempt-secondary">
-            <Button
-              variant="ghost"
-              disabled={busy}
-              onClick={() =>
-                void save({
-                  outcome: "SKIPPED",
-                  score: 0,
-                  maxScore: maximumScore(
-                    item.definition?.type ?? "",
-                    item.configuration,
-                  ),
-                  timeSeconds: 0,
-                  details: {},
-                })
-              }
-            >
-              {t("Skip activity")}
-            </Button>
-          </div>
-        </>
+        </section>
       ) : (
         <section className="panel finish-panel">
           <span className="completion-mark">

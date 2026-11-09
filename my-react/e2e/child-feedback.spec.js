@@ -98,7 +98,7 @@ async function openGame(
                   },
                 ]
               : [item],
-            results: [],
+            results: saved ? [{ ...saved, revisionItemId: 30 }] : [],
           },
         });
       if (path === "/api/attempts/40/items/30/result") {
@@ -236,6 +236,8 @@ for (const type of [
       ).toHaveText(correct === "Mai mare" ? ">" : "<");
     }
     await page.clock.runFor(2000);
+    await expect(page.locator('[data-game-type="color-game"]')).toHaveCount(0);
+    await game.getByRole("button", { name: "Continuă", exact: true }).click();
     await expect(page.locator('[data-game-type="color-game"]')).toBeVisible();
     expect(saved()).toMatchObject({
       score: 1,
@@ -274,6 +276,7 @@ test("a failed automatic save retains the scored result and only retries saving"
   await game
     .getByRole("button", { name: "Salvează rezultatul", exact: true })
     .tap();
+  await game.getByRole("button", { name: "Continuă", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Finalizează fișa" }),
   ).toBeVisible();
@@ -326,6 +329,7 @@ test("the final wrong answer scores zero and the next game waits for a successfu
   await expect(page.locator('[data-game-type="color-game"]')).toHaveCount(0);
   expect(saved()).toBeUndefined();
   releaseSave();
+  await game.getByRole("button", { name: "Continuă", exact: true }).click();
   await expect(page.locator('[data-game-type="color-game"]')).toBeVisible();
   expect(saved()).toMatchObject({
     score: 0,
@@ -476,13 +480,15 @@ test("matching locks an incorrect submission and a failed save retries the same 
   await groupTwo.dispatchEvent("keydown", { key: "Enter" });
   await expect(groupOne.locator(".matching-placed-number")).toHaveText("2");
   await expect(groupTwo.locator(".matching-placed-number")).toHaveText("1");
-  await game.getByRole("button", { name: "Continuă", exact: true }).click();
   await expect(
     page.getByText("Connection lost", { exact: true }),
   ).toBeVisible();
   await expect(
     game.getByRole("button", { name: /Verifică răspunsul/ }),
   ).toBeDisabled();
+  await game
+    .getByRole("button", { name: "Salvează rezultatul", exact: true })
+    .click();
   await game.getByRole("button", { name: "Continuă", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Finalizează fișa" }),
@@ -520,4 +526,148 @@ test("all selected audio assets load and decode", async ({ page }) => {
   expect(durations.every((duration) => duration > 0 && duration < 4)).toBe(
     true,
   );
+});
+
+test("swipe requires completion and successful saving; other touch directions do not advance", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install();
+  const { game, requests, releaseSave } = await openGame(page, "math-game", {
+    nextGame: true,
+    holdSave: true,
+  });
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await expect(page.locator("[data-swipe-next]")).toHaveCount(0);
+  await game.getByRole("button", { name: "2", exact: true }).tap();
+  await page.clock.runFor(2000);
+  await expect.poll(() => requests.length).toBe(1);
+  await expect(page.locator("[data-swipe-next]")).toHaveCount(0);
+  releaseSave();
+  const surface = page.locator("[data-swipe-next]");
+  await expect(surface).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sari peste activitate", exact: true }),
+  ).toHaveCount(0);
+  await surface.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: test.info().outputPath("swipe-completion.png"),
+    fullPage: true,
+  });
+  const box = await surface.boundingBox();
+  const x = box.x + box.width / 2,
+    top = box.y + 12,
+    bottom = box.y + box.height - 12;
+  const session = await page.context().newCDPSession(page);
+  async function gesture(from, to, cancel = false) {
+    await session.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [{ x: from[0], y: from[1] }],
+    });
+    for (let step = 1; step <= 4; step++)
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [
+          {
+            x: from[0] + ((to[0] - from[0]) * step) / 4,
+            y: from[1] + ((to[1] - from[1]) * step) / 4,
+          },
+        ],
+      });
+    await session.send("Input.dispatchTouchEvent", {
+      type: cancel ? "touchCancel" : "touchEnd",
+      touchPoints: [],
+    });
+  }
+  for (const [from, to, cancel] of [
+    [[x, top], [x, bottom], false],
+    [[x - 50, top + 30], [x + 50, top + 30], false],
+    [[x, bottom], [x, bottom - 20], false],
+    [[x, bottom], [x, top], true],
+  ]) {
+    await gesture(from, to, cancel);
+    await expect(game).toBeVisible();
+    await expect(page.locator('[data-game-type="color-game"]')).toHaveCount(0);
+  }
+  await gesture([x, bottom], [x, top]);
+  await expect(page.locator('[data-game-type="color-game"]')).toBeVisible();
+  expect(requests).toHaveLength(1);
+  await session.detach();
+});
+
+test("completion supports keyboard advance without saving twice", async ({
+  page,
+}) => {
+  await page.clock.install();
+  const { game, requests } = await openGame(page, "math-game", {
+    nextGame: true,
+  });
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await game.getByRole("button", { name: "2", exact: true }).click();
+  await page.clock.runFor(2000);
+  const surface = page.locator("[data-swipe-next]");
+  await expect(surface).toBeVisible();
+  await surface.focus();
+  await surface.press("ArrowUp");
+  await expect(page.locator('[data-game-type="color-game"]')).toBeVisible();
+  await expect(page.locator(".activity-viewport")).toBeFocused();
+  expect(requests).toHaveLength(1);
+});
+
+test("reload resumes after a saved activity without submitting its score again", async ({
+  page,
+}) => {
+  await page.clock.install();
+  const { game, requests } = await openGame(page, "math-game", {
+    nextGame: true,
+  });
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await game.getByRole("button", { name: "2", exact: true }).click();
+  await page.clock.runFor(2000);
+  await expect(page.locator("[data-swipe-next]")).toBeVisible();
+  await page.clock.resume();
+  await page.reload();
+  await expect(page.locator('[data-game-type="color-game"]')).toBeVisible();
+  expect(requests).toHaveLength(1);
+});
+
+test("an unavailable game can still be skipped explicitly", async ({
+  page,
+}) => {
+  const { requests } = await openGame(page, "math-game", { nextGame: true });
+  await page.route("**/api/attempts/40", (route) =>
+    route.fulfill({
+      json: {
+        id: 40,
+        assignmentId: 50,
+        status: "IN_PROGRESS",
+        results: [],
+        items: [
+          {
+            id: 30,
+            orderIndex: 0,
+            definition: { type: "future-game", version: 99 },
+            configuration: {},
+          },
+          {
+            id: 31,
+            orderIndex: 1,
+            definition: { type: "color-game", version: 1 },
+            configuration: {
+              letter: "u",
+              animals: [{ id: "bear", name: "Urs", img: "/img/BearImg.webp" }],
+            },
+          },
+        ],
+      },
+    }),
+  );
+  await page.reload();
+  await expect(page.locator("[data-swipe-next]")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Sari peste activitate", exact: true })
+    .click();
+  await expect(page.locator('[data-game-type="color-game"]')).toBeVisible();
+  expect(requests).toHaveLength(1);
+  expect(requests[0].outcome).toBe("SKIPPED");
 });

@@ -180,6 +180,18 @@ async function holdAndMove(page, source, target, after = false) {
   await page.mouse.up();
   await expect(page.locator(".activityDragPreview")).toHaveCount(0);
 }
+async function showPhoto(page, label = "Activity photo") {
+  await page.getByRole("tab", { name: "Visuals", exact: true }).click();
+  const field = page.getByRole("region", {
+    name: label,
+    exact: true,
+    includeHidden: true,
+  });
+  const details = field.locator("..");
+  if (!(await details.evaluate((element) => element.open)))
+    await details.locator("summary").click();
+  return field;
+}
 async function upload(page, field) {
   await field.locator('input[type="file"]').last().setInputFiles({
     name: "my-photo.png",
@@ -586,10 +598,7 @@ test("photo upload, library reuse, replacement and removal persist and appear in
   page,
 }) => {
   const state = await setup(page);
-  const field = page.getByRole("region", {
-    name: "Activity photo",
-    exact: true,
-  });
+  const field = await showPhoto(page);
   await upload(page, field);
   expect(state.uploads).toBe(1);
   await save(page);
@@ -603,6 +612,7 @@ test("photo upload, library reuse, replacement and removal persist and appear in
     },
   });
   await page.reload();
+  await showPhoto(page);
   await expect(field.locator(".photoFieldPreview")).toHaveAttribute(
     "src",
     "/api/minigame-assets/500/content",
@@ -629,16 +639,18 @@ test("photo upload, library reuse, replacement and removal persist and appear in
   await page
     .getByRole("button", { name: "Back to editor", exact: true })
     .click();
+  await showPhoto(page);
   await field
     .getByRole("button", { name: "Remove photo", exact: true })
     .click();
   await choose(page, "Letters & pictures");
-  await upload(page, page.getByRole("region", { name: "Urs", exact: true }));
+  await upload(page, await showPhoto(page, "Urs"));
   await expect(page.locator(".widget img")).toHaveAttribute(
     "src",
     "/api/minigame-assets/502/content",
   );
   await choose(page, "Match the Amounts");
+  await showPhoto(page, "Pair 1");
   await page
     .getByRole("region", { name: "Pair 1", exact: true })
     .getByRole("button", { name: "My photos", exact: true })
@@ -667,10 +679,7 @@ test("a failed upload retains the existing photo and settings", async ({
   page,
 }) => {
   const state = await setup(page);
-  const field = page.getByRole("region", {
-    name: "Activity photo",
-    exact: true,
-  });
+  const field = await showPhoto(page);
   await upload(page, field);
   await save(page);
   state.failUpload = true;
@@ -727,3 +736,111 @@ test("phone activity drawer supports switching without losing edited settings", 
       .exerciseCount,
   ).toBe(37);
 });
+
+test("built-in visuals persist in historical fields and custom emoji remain supported", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const state = await setup(page);
+  await choose(page, "Match the Amounts");
+  const activity = page.getByRole("tab", { name: "Activity", exact: true });
+  await activity.focus();
+  await activity.press("ArrowRight");
+  await expect(
+    page.getByRole("tab", { name: "Visuals", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  const picker = page.locator(".editor-settings .visual-picker").first();
+  await picker.getByRole("searchbox").fill("pear");
+  await picker.getByRole("button", { name: "Pear", exact: true }).click();
+  await picker.getByRole("searchbox").fill("");
+  await page.screenshot({
+    path: test.info().outputPath("visual-library.png"),
+    fullPage: true,
+  });
+  await expect(page.locator(".matching-objects img")).toHaveAttribute(
+    "src",
+    "/img/illustrations/v1/pear.svg",
+  );
+  await save(page);
+  expect(state.worksheet.items.find((item) => item.id === 33)).toMatchObject({
+    miniGameId: 4,
+    configuration: { pairs: [{ id: "one", number: 1, emoji: "🍐" }] },
+  });
+  await page.reload();
+  await choose(page, "Match the Amounts");
+  await page.getByRole("tab", { name: "Visuals", exact: true }).click();
+  await expect(
+    picker.getByRole("button", { name: "Pear", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByText("Use a different emoji", { exact: true }).click();
+  await page.locator("#pair-emoji-0").fill("🧩");
+  await expect(page.locator(".matching-objects")).toHaveText("🧩");
+  await save(page);
+  await choose(page, "Letters & pictures");
+  await page.getByRole("tab", { name: "Visuals", exact: true }).click();
+  await picker.getByRole("searchbox").fill("fox");
+  await picker.getByRole("button", { name: "Fox", exact: true }).click();
+  await expect(page.locator(".widget img")).toHaveAttribute(
+    "src",
+    "/img/illustrations/v1/fox.svg",
+  );
+  await save(page);
+  expect(state.worksheet.items.find((item) => item.id === 32)).toMatchObject({
+    miniGameId: 3,
+    configuration: {
+      animals: [
+        { id: "bear", name: "Urs", img: "/img/illustrations/v1/fox.svg" },
+      ],
+    },
+  });
+  await page.reload();
+  await choose(page, "Letters & pictures");
+  await expect(page.locator(".widget img")).toHaveAttribute(
+    "src",
+    "/img/illustrations/v1/fox.svg",
+  );
+});
+
+for (const language of ["en", "ro"]) {
+  test(`the visual library fits a 320px phone in ${language}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await setup(page);
+    if (language === "ro") {
+      await page.getByLabel("Language", { exact: true }).click();
+      await page.getByText("Română", { exact: true }).click();
+    }
+    await page.locator(".editor-mobile-toolbar > button").click();
+    await page.getByRole("dialog").locator(".activityThumbnail").last().click();
+    await page
+      .getByRole("tab", {
+        name: language === "en" ? "Visuals" : "Ilustrații",
+        exact: true,
+      })
+      .click();
+    const picker = page.locator(".editor-settings .visual-picker").first();
+    await picker
+      .getByRole("searchbox")
+      .fill(language === "en" ? "strawberry" : "căpșună");
+    await picker
+      .getByRole("button", {
+        name: language === "en" ? "Strawberry" : "Căpșună",
+        exact: true,
+      })
+      .click();
+    await expect(
+      picker.getByRole("button", {
+        name: language === "en" ? "Strawberry" : "Căpșună",
+        exact: true,
+      }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(320);
+    await page.screenshot({
+      path: test.info().outputPath(`visual-library-${language}-phone.png`),
+      fullPage: true,
+    });
+  });
+}

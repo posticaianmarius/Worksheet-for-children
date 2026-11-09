@@ -5,6 +5,7 @@ import type { Answer } from "../engine";
 import { createQuestion, exerciseCount } from "../engine";
 import { playAnswerFeedback } from "../feedback";
 import type { PlayerProps } from "../registry";
+import { EmojiVisual } from "../../shared/visuals/Visual";
 const classNames: Record<string, string> = {
   "math-game": "math",
   "sequence-game": "sequence",
@@ -87,6 +88,13 @@ export default function NumberPlayer({
       <p className={prefix + "-exercise-number game-step"}>
         {t("Exercise")} {index} / {total}
       </p>
+      <progress
+        className="exercise-progress"
+        value={index - 1}
+        max={total}
+        aria-label={t("studio.exerciseProgress")}
+      />
+      <h3 className="number-instruction">{t("studio.prompt." + type)}</h3>
       <div className={prefix + "-question number-prompt"}>
         {type === "math-game" ? (
           <strong>
@@ -111,6 +119,36 @@ export default function NumberPlayer({
           <strong>{question.values[0]}</strong>
         )}
       </div>
+      {["math-game", "higher-lower-game"].includes(type) &&
+      (type !== "math-game" || ["+", "-"].includes(question.operator ?? "")) &&
+      question.values.every(
+        (value) => Number.isInteger(value) && value >= 0 && value <= 10,
+      ) ? (
+        <div className="counting-scene" aria-hidden="true">
+          {question.values.map((value, group) => (
+            <div className="counting-basket" key={group}>
+              {Array.from({ length: value }, (_, i) => (
+                <EmojiVisual key={i} emoji={group === 0 ? "🍎" : "🍊"} />
+              ))}
+              {value === 0 && <span>0</span>}
+            </div>
+          ))}
+        </div>
+      ) : type === "odd-even-game" && question.values[0] <= 20 ? (
+        <div className="parity-scene" aria-hidden="true">
+          {Array.from(
+            { length: Math.ceil(question.values[0] / 2) },
+            (_, pair) => (
+              <div key={pair}>
+                <EmojiVisual emoji="⭐" />
+                {pair * 2 + 1 < question.values[0] && (
+                  <EmojiVisual emoji="⭐" />
+                )}
+              </div>
+            ),
+          )}
+        </div>
+      ) : null}
       <div
         className={
           prefix +

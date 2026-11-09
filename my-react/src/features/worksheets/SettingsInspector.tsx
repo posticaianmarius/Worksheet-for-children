@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import { Tabs } from "@base-ui/react/tabs";
+import { Palette, SlidersHorizontal } from "lucide-react";
 import { gameModules } from "../../games/registry";
 import { setAtPath } from "../../shared/configuration";
 import { useLanguage } from "../../shared/runtime";
@@ -23,10 +25,11 @@ export default function SettingsInspector({
   const { t } = useLanguage(),
     Editor = gameModules[definition.type]?.Editor;
   if (!Editor) return null;
-  return (
-    <div className="settings-form">
+  function editor(section: "activity" | "visuals") {
+    return (
       <Suspense fallback={<Loading />}>
         <Editor
+          section={section}
           type={definition.type}
           schema={definition.configurationSchema ?? {}}
           configuration={configuration}
@@ -56,17 +59,46 @@ export default function SettingsInspector({
           }
         />
       </Suspense>
-      {photoDefinition && (
-        <PhotoField
-          definition={photoDefinition}
-          label={t("Activity photo")}
-          value={configuration.imageAssetId}
-          onBusy={onBusy}
-          onChange={(id) =>
-            onPhotoChange({ ...configuration, imageAssetId: id })
-          }
-        />
-      )}
-    </div>
+    );
+  }
+  return (
+    <Tabs.Root defaultValue="activity" className="settings-form">
+      <Tabs.List
+        activateOnFocus
+        className="studio-tabs"
+        aria-label={t("Activity settings")}
+      >
+        <Tabs.Tab value="activity">
+          <SlidersHorizontal size={15} />
+          {t("studio.activity")}
+        </Tabs.Tab>
+        <Tabs.Tab value="visuals">
+          <Palette size={15} />
+          {t("studio.visuals")}
+        </Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value="activity">{editor("activity")}</Tabs.Panel>
+      <Tabs.Panel value="visuals">
+        <p className="visual-intro">{t("visual.intro")}</p>
+        {editor("visuals")}
+        {photoDefinition && (
+          <details className="visual-upload">
+            <summary>
+              {t("visual.activityImage")}
+              {configuration.imageAssetId ? " · " + t("visual.inUse") : ""}
+            </summary>
+            <PhotoField
+              definition={photoDefinition}
+              label={t("Activity photo")}
+              value={configuration.imageAssetId}
+              onBusy={onBusy}
+              onChange={(id) =>
+                onPhotoChange({ ...configuration, imageAssetId: id })
+              }
+            />
+          </details>
+        )}
+      </Tabs.Panel>
+    </Tabs.Root>
   );
 }

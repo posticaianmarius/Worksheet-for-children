@@ -8,6 +8,7 @@ export interface PlayerProps {
   disabled?: boolean;
 }
 export interface EditorProps {
+  section?: "activity" | "visuals";
   type: string;
   schema: Schema;
   configuration: Configuration;

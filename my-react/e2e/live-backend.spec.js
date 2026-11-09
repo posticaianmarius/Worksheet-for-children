@@ -7,6 +7,11 @@ test("real backend: all six editors persist non-default settings and a class com
 }) => {
   test.setTimeout(180_000);
   page.setDefaultTimeout(20_000);
+  const illustration = await page.request.get(
+    "/img/illustrations/v1/apple.svg",
+  );
+  expect(illustration.ok()).toBe(true);
+  expect(illustration.headers()["content-type"]).toContain("svg");
   await page.addInitScript(() =>
     localStorage.setItem("worksheet-language", "en"),
   );
@@ -76,7 +81,13 @@ test("real backend: all six editors persist non-default settings and a class com
   await page.getByLabel("Name 1", { exact: true }).fill("Ursul");
   await add("Match the Amounts");
   await page.getByLabel("Number", { exact: true }).first().fill("5");
-  await page.getByLabel("Picture or emoji", { exact: true }).first().fill("🍐");
+  await page.getByRole("tab", { name: "Visuals", exact: true }).click();
+  await page
+    .locator(".editor-settings .visual-picker")
+    .first()
+    .getByRole("button", { name: "Pear", exact: true })
+    .click();
+  await page.getByText("Activity image (optional)", { exact: true }).click();
   const photo = await page.screenshot({
     clip: { x: 0, y: 0, width: 20, height: 20 },
   });
@@ -220,6 +231,9 @@ test("real backend: all six editors persist non-default settings and a class com
     await expect(childPage).toHaveURL(/\/attempts\/\d+$/);
     await childPage.reload();
     await childPage.getByRole("button", { name: "Odd", exact: true }).click();
+    await childPage
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
     await childPage
       .getByRole("button", { name: "Finish worksheet", exact: true })
       .click();

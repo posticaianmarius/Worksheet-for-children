@@ -5,8 +5,11 @@ export default function NumberEditor({
   configuration,
   schema,
   onChange,
+  section = "activity",
 }: EditorProps) {
   const { t } = useLanguage();
+  if (section === "visuals")
+    return <p className="visual-intro">{t("visual.numberHelp")}</p>;
   const properties = schema.properties ?? {};
   function number(key: "maxNumber" | "exerciseCount", label: string) {
     return (

@@ -6,6 +6,62 @@ export type Translate = (
   values?: Record<string, unknown>,
 ) => string;
 const copy: Record<string, [string, string]> = {
+  "studio.activity": ["Activity", "Activitate"],
+  "studio.previewReady": [
+    "Preview complete. No results are saved.",
+    "Previzualizare terminată. Rezultatele nu sunt salvate.",
+  ],
+  "studio.visuals": ["Visuals", "Ilustrații"],
+  "studio.savedResult": ["Your progress is saved", "Progresul tău este salvat"],
+  "studio.swipe": [
+    "Swipe up for the next activity",
+    "Glisează în sus pentru următoarea activitate",
+  ],
+  "studio.exerciseProgress": ["Exercises completed", "Exerciții terminate"],
+  "studio.prompt.math-game": [
+    "Find the missing answer",
+    "Găsește răspunsul corect",
+  ],
+  "studio.prompt.sequence-game": ["What comes next?", "Ce număr urmează?"],
+  "studio.prompt.higher-lower-game": [
+    "Compare the two numbers",
+    "Compară cele două numere",
+  ],
+  "studio.prompt.odd-even-game": [
+    "Can everyone find a partner?",
+    "Are fiecare o pereche?",
+  ],
+  "visual.intro": [
+    "Make it yours with ready-to-use illustrations. No uploads needed.",
+    "Personalizează cu ilustrații gata de folosit. Nu trebuie să încarci imagini.",
+  ],
+  "visual.wordHelp": [
+    "Pictures do not change the word. Edit names in Activity.",
+    "Imaginile nu schimbă cuvântul. Editează numele în Activitate.",
+  ],
+  "visual.numberHelp": [
+    "Small numbers come with illustrated counting groups. Larger numbers keep the focus on the question.",
+    "Numerele mici au grupuri ilustrate pentru numărare. La numerele mari, întrebarea rămâne în prim-plan.",
+  ],
+  "visual.builtins": ["Built-in illustrations", "Ilustrații incluse"],
+  "visual.search": ["Search illustrations", "Caută ilustrații"],
+  "visual.categories": ["Illustration categories", "Categorii de ilustrații"],
+  "visual.all": ["All", "Toate"],
+  "visual.food": ["Food", "Alimente"],
+  "visual.animals": ["Animals", "Animale"],
+  "visual.nature": ["Nature", "Natură"],
+  "visual.objects": ["Objects", "Obiecte"],
+  "visual.empty": [
+    "No illustrations found. Try another word.",
+    "Nu am găsit ilustrații. Încearcă alt cuvânt.",
+  ],
+  "visual.ownImage": ["Your images (optional)", "Imaginile tale (opțional)"],
+  "visual.activityImage": [
+    "Activity image (optional)",
+    "Imaginea activității (opțional)",
+  ],
+  "visual.customEmoji": ["Use a different emoji", "Folosește alt emoji"],
+  "visual.inUse": ["In use", "În uz"],
   ...spaceCopy,
   "auth.nameExample": ["e.g. Ana Popescu", "ex. Ana Popescu"],
   "auth.emailExample": ["e.g. teacher@example.com", "ex. profesor@example.com"],

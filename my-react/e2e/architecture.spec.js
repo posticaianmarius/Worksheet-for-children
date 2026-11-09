@@ -197,6 +197,7 @@ test("a personal code opens only the student's work and resumes the saved attemp
   await expect(page).toHaveURL(/\/attempts\/40$/);
   expect(state.starts).toBe(0);
   await page.getByRole("button", { name: "Odd", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByRole("button", { name: "Finish worksheet", exact: true })
     .click();

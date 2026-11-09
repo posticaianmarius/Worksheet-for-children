@@ -195,8 +195,7 @@ for (const type of [
       }
       await game.getByRole("button", { name: answer, exact: true }).click();
     }
-    if (type === "matching-game")
-      await game.getByRole("button", { name: "Continuă", exact: true }).click();
+    await game.getByRole("button", { name: "Continuă", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Finalizează fișa" }),
     ).toBeVisible();
